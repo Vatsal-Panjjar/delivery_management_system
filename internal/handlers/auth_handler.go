@@ -5,77 +5,83 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
-
 	"github.com/Vatsal-Panjiar/delivery_management_system/internal/models"
 	"github.com/Vatsal-Panjiar/delivery_management_system/internal/repo"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthHandler struct {
-	UserRepo  *repo.UserRepo
-	JWTSecret []byte
+	UserRepo *repo.UserRepo
+	JWTKey   []byte
 }
 
-func NewAuthHandler(userRepo *repo.UserRepo, secret []byte) *AuthHandler {
-	return &AuthHandler{UserRepo: userRepo, JWTSecret: secret}
+func NewAuthHandler(userRepo *repo.UserRepo, jwtKey []byte) *AuthHandler {
+	return &AuthHandler{
+		UserRepo: userRepo,
+		JWTKey:   jwtKey,
+	}
 }
 
-type signupReq struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Role     string `json:"role"`
-}
-
+// Signup registers a new user
 func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
-	var req signupReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var u models.User
+	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	user := &models.User{
-		ID:           uuid.New().String(),
-		Username:     req.Username,
-		PasswordHash: string(hash),
-		Role:         req.Role,
-		CreatedAt:    time.Now(),
+	hash, err := bcrypt.GenerateFromPassword([]byte(u.PasswordHash), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "failed to hash password", http.StatusInternalServerError)
+		return
 	}
+	u.PasswordHash = string(hash)
 
-	if err := h.UserRepo.Create(user); err != nil {
+	if err := h.UserRepo.Create(&u); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(user)
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(u)
 }
 
-type loginReq struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
+// Login authenticates user and returns JWT token
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var req loginReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var creds struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	user, err := h.UserRepo.GetByUsername(req.Username)
-	if err != nil || bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)) != nil {
-		http.Error(w, "invalid credentials", http.StatusUnauthorized)
+	u, err := h.UserRepo.GetByUsername(creds.Username)
+	if err != nil {
+		http.Error(w, "invalid username or password", http.StatusUnauthorized)
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(creds.Password)); err != nil {
+		http.Error(w, "invalid username or password", http.StatusUnauthorized)
 		return
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id":  user.ID,
-		"username": user.Username,
-		"role":     user.Role,
-		"exp":      time.Now().Add(24 * time.Hour).Unix(),
+		"user_id": u.ID,
+		"role":    u.Role,
+		"exp":     time.Now().Add(24 * time.Hour).Unix(),
 	})
 
-	signed, _ := token.SignedString(h.JWTSecret)
-	json.NewEncoder(w).Encode(map[string]string{"token": signed})
+	tokenString, err := token.SignedString(h.JWTKey)
+	if err != nil {
+		http.Error(w, "failed to generate token", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{
+		"token": tokenString,
+	})
 }
