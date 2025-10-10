@@ -6,39 +6,38 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/Vatsal-Panjiar/delivery_management_system/internal/models"
 	"github.com/Vatsal-Panjiar/delivery_management_system/internal/repo"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthHandler struct {
-	UserRepo *repo.UserRepo
-	JWTKey   []byte
+	Repo      *repo.UserRepo
+	JWTSecret []byte
 }
 
-func NewAuthHandler(userRepo *repo.UserRepo, jwtKey []byte) *AuthHandler {
-	return &AuthHandler{UserRepo: userRepo, JWTKey: jwtKey}
+func NewAuthHandler(userRepo *repo.UserRepo, secret []byte) *AuthHandler {
+	return &AuthHandler{
+		Repo:      userRepo,
+		JWTSecret: secret,
+	}
 }
 
+// Signup creates a new user
 func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
-	var u models.User
-	json.NewDecoder(r.Body).Decode(&u)
-	hash, _ := bcrypt.GenerateFromPassword([]byte(u.PasswordHash), bcrypt.DefaultCost)
-	u.PasswordHash = string(hash)
-	h.UserRepo.Create(&u)
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(u)
-}
-
-func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var creds struct {
+	var req struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
+		Role     string `json:"role"` // "customer" or "admin"
 	}
-	json.NewDecoder(r.Body).Decode(&creds)
-	u, _ := h.UserRepo.GetByUsername(creds.Username)
-	bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(creds.Password))
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{"user_id": u.ID, "role": u.Role, "exp": time.Now().Add(24 * time.Hour).Unix()})
-	tokenString, _ := token.SignedString(h.JWTKey)
-	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
-}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerEr
