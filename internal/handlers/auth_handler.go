@@ -13,87 +13,69 @@ import (
 	"github.com/Vatsal-Panjiar/delivery_management_system/internal/repo"
 )
 
-var jwtSecret = []byte("your_secret_key") // change this in production
-
 type AuthHandler struct {
 	UserRepo *repo.UserRepo
+	JWTKey   []byte
 }
 
-func NewAuthHandler(r *repo.UserRepo) *AuthHandler {
-	return &AuthHandler{UserRepo: r}
+func NewAuthHandler(ur *repo.UserRepo, key []byte) *AuthHandler {
+	return &AuthHandler{UserRepo: ur, JWTKey: key}
 }
 
-type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-type SignupRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Role     string `json:"role"` // customer/admin
-}
-
-func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
-	var req SignupRequest
+func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+		Role     string `json:"role"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
-	hashed, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		http.Error(w, "could not hash password", http.StatusInternalServerError)
-		return
-	}
-
+	hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	user := &models.User{
 		ID:           uuid.NewString(),
 		Username:     req.Username,
-		PasswordHash: string(hashed),
+		PasswordHash: string(hash),
 		Role:         req.Role,
 		CreatedAt:    time.Now(),
 	}
-
 	if err := h.UserRepo.Create(user); err != nil {
-		http.Error(w, "could not create user", http.StatusInternalServerError)
+		http.Error(w, "failed", http.StatusInternalServerError)
 		return
 	}
-
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"id": user.ID})
+	json.NewEncoder(w).Encode(user)
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var req LoginRequest
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
 	user, err := h.UserRepo.GetByUsername(req.Username)
 	if err != nil {
-		http.Error(w, "user not found", http.StatusUnauthorized)
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
-		http.Error(w, "invalid password", http.StatusUnauthorized)
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID,
 		"role":    user.Role,
-		"exp":     time.Now().Add(time.Hour * 72).Unix(),
+		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	})
+	signed, _ := token.SignedString(h.JWTKey)
 
-	signed, err := token.SignedString(jwtSecret)
-	if err != nil {
-		http.Error(w, "could not sign token", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"token": signed})
 }
