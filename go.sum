@@ -8,5 +8,5 @@ github.com/lib/pq v1.10.7 h1:6EDzw45ZnXq8eXkJFXzQZgIkfZDzO7AOVMZsY6aE0Bo=
 github.com/lib/pq v1.10.7/go.mod h1:8ZKZ6FAvZbY9UUDXYuN13tj8P1QZRH6uODQJ8nHCZpI=
 github.com/golang-jwt/jwt/v5 v5.0.0 h1:1v6RJf8hEjs2k8e/kWtlFZw/hi6Ppm5yC0knpAM0/G0=
 github.com/golang-jwt/jwt/v5 v5.0.0/go.mod h1:R8fK2UsX1bCwSTkKHvlLZf4PA9kBhO2s+M3J2+gHKzU=
-github.com/google/uuid v1.4.0 h1:Z7Xy1Ywz/9HwEjUjsHzp3lWf5mYcM5iPqrb2vHsJdP8=
+github.com/google/uuid v1.4.0 h1:Z7Xy1Ywz/9HwEjUjsHzp3lWf5mYcM5iPqrb2vHsJdP8= 
 github.com/google/uuid v1.4.0/go.mod h1:3pJ7Lh2cQ4NdZ/r3L1aJd9sZ/UpE/9I/36j0keItz2k=
