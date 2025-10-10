@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -15,30 +14,27 @@ import (
 )
 
 func main() {
-	// --- PostgreSQL Connection ---
+	// Connect to Postgres
 	db, err := sqlx.Connect("postgres", "host=localhost port=5432 user=postgres password=YOUR_PASSWORD dbname=delivery sslmode=disable")
 	if err != nil {
-		log.Fatalf("Postgres connection error: %v", err)
+		panic(err)
 	}
 
-	// --- Redis Connection ---
-	rCache := cache.NewRedisCache("localhost:6379")
-
-	// --- Repos ---
-	deliveryRepo := repo.NewDeliveryRepo(db)
+	// Initialize repos
 	userRepo := repo.NewUserRepo(db)
+	deliveryRepo := repo.NewDeliveryRepo(db)
 
-	// --- Handlers ---
-	deliveryHandler := handlers.NewDeliveryHandler(deliveryRepo, rCache)
-	authHandler := handlers.NewAuthHandler(userRepo, []byte("mysecretkey123")) // JWT secret
+	// Initialize Redis cache
+	redisCache := cache.NewRedisCache("localhost:6379")
 
-	// --- Router ---
+	// Initialize handlers
+	authHandler := handlers.NewAuthHandler(userRepo, []byte("mysecretkey"))
+	deliveryHandler := handlers.NewDeliveryHandler(deliveryRepo, redisCache)
+
+	// Setup router
 	router := chi.NewRouter()
+	handlers.RegisterRoutes(router, deliveryHandler, authHandler)
 
-	// Auth Routes
-	router.Post("/register", authHandler.Register)
-	router.Post("/login", authHandler.Login)
-
-	// Delivery Routes
-	router.Post("/deliveries", deliveryHandler.Create)
-	router.Get("/deliveries", deliver
+	fmt.Println("Server running on :8080")
+	http.ListenAndServe(":8080", router)
+}
