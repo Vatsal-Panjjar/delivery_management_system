@@ -1,0 +1,33 @@
+version: '3.8'
+services:
+postgres:
+image: postgres:15
+environment:
+POSTGRES_USER: dman
+POSTGRES_PASSWORD: dmanpass
+POSTGRES_DB: dman
+ports:
+- '5432:5432'
+volumes:
+- pgdata:/var/lib/postgresql/data
+redis:
+image: redis:7
+ports:
+- '6379:6379'
+api:
+build: .
+depends_on:
+- postgres
+- redis
+environment:
+PG_USER: dman
+PG_PASS: dmanpass
+PG_DB: dman
+PG_HOST: postgres
+PG_PORT: '5432'
+REDIS_ADDR: redis:6379
+JWT_SECRET: verysecretkey
+ports:
+- '8080:8080'
+volumes:
+pgdata:
