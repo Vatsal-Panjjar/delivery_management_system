@@ -2,8 +2,6 @@ package repo
 
 import (
 	"database/sql"
-	"errors"
-	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/Vatsal-Panjiar/delivery_management_system/internal/models"
@@ -17,20 +15,18 @@ func NewUserRepo(db *sqlx.DB) *UserRepo {
 	return &UserRepo{DB: db}
 }
 
-func (r *UserRepo) Create(user *models.User) error {
-	_, err := r.DB.Exec(
-		`INSERT INTO users (id, username, password_hash, role, created_at)
-		 VALUES ($1,$2,$3,$4,$5)`,
-		user.ID, user.Username, user.PasswordHash, user.Role, time.Now(),
-	)
+func (r *UserRepo) Create(u *models.User) error {
+	query := `INSERT INTO users (id, username, password_hash, role, created_at) 
+			  VALUES ($1,$2,$3,$4,$5)`
+	_, err := r.DB.Exec(query, u.ID, u.Username, u.PasswordHash, u.Role, u.CreatedAt)
 	return err
 }
 
 func (r *UserRepo) GetByUsername(username string) (*models.User, error) {
-	var user models.User
-	err := r.DB.Get(&user, "SELECT * FROM users WHERE username=$1", username)
+	var u models.User
+	err := r.DB.Get(&u, "SELECT * FROM users WHERE username=$1", username)
 	if err == sql.ErrNoRows {
-		return nil, errors.New("user not found")
+		return nil, err
 	}
-	return &user, err
+	return &u, err
 }
