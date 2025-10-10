@@ -2,6 +2,7 @@ package repo
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/Vatsal-Panjiar/delivery_management_system/internal/models"
@@ -16,9 +17,8 @@ func NewUserRepo(db *sqlx.DB) *UserRepo {
 }
 
 func (r *UserRepo) Create(u *models.User) error {
-	query := `INSERT INTO users (id, username, password_hash, role, created_at) 
-			  VALUES ($1,$2,$3,$4,$5)`
-	_, err := r.DB.Exec(query, u.ID, u.Username, u.PasswordHash, u.Role, u.CreatedAt)
+	query := `INSERT INTO users (id, username, password_hash, role, created_at) VALUES ($1,$2,$3,$4,$5)`
+	_, err := r.DB.Exec(query, u.ID, u.Username, u.PasswordHash, u.Role, time.Now())
 	return err
 }
 
