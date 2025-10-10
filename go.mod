@@ -1,7 +1,7 @@
 module github.com/Vatsal-Panjiar/delivery_management_system
 
 go 1.22
-
+ 
 require (
     github.com/go-redis/redis/v8 v8.11.5  
     github.com/gorilla/mux v1.8.1
