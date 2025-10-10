@@ -12,10 +12,11 @@ import (
 "github.com/google/uuid"
 
 
-"dman/internal/models"
-"dman/internal/repo"
-"dman/internal/cache"
-"dman/internal/auth"
+import "github.com/Vatsal-Panjiar/delivery_management_system/internal/models"
+import "github.com/Vatsal-Panjiar/delivery_management_system/internal/repo"
+import "github.com/Vatsal-Panjiar/delivery_management_system/internal/cache"
+import "github.com/Vatsal-Panjiar/delivery_management_system/internal/auth"
+
 )
 
 
