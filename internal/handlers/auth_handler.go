@@ -18,64 +18,53 @@ type AuthHandler struct {
 	JWTKey   []byte
 }
 
-func NewAuthHandler(ur *repo.UserRepo, key []byte) *AuthHandler {
-	return &AuthHandler{UserRepo: ur, JWTKey: key}
+func NewAuthHandler(ur *repo.UserRepo, jwtKey []byte) *AuthHandler {
+	return &AuthHandler{
+		UserRepo: ur,
+		JWTKey:   jwtKey,
+	}
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-		Role     string `json:"role"`
-	}
+	var req models.User
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
-	hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	user := &models.User{
-		ID:           uuid.NewString(),
-		Username:     req.Username,
-		PasswordHash: string(hash),
-		Role:         req.Role,
-		CreatedAt:    time.Now(),
-	}
-	if err := h.UserRepo.Create(user); err != nil {
+	req.ID = uuid.NewString()
+	hash, _ := bcrypt.GenerateFromPassword([]byte(req.PasswordHash), bcrypt.DefaultCost)
+	req.PasswordHash = string(hash)
+	req.CreatedAt = time.Now()
+
+	if err := h.UserRepo.Create(&req); err != nil {
 		http.Error(w, "failed", http.StatusInternalServerError)
 		return
 	}
+
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(req)
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}
+	var req models.User
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
 	user, err := h.UserRepo.GetByUsername(req.Username)
-	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+	if err != nil || bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.PasswordHash)) != nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID,
-		"role":    user.Role,
-		"exp":     time.Now().Add(time.Hour * 24).Unix(),
+		"exp":     time.Now().Add(24 * time.Hour).Unix(),
 	})
-	signed, _ := token.SignedString(h.JWTKey)
 
-	json.NewEncoder(w).Encode(map[string]string{"token": signed})
+	tokenString, _ := token.SignedString(h.JWTKey)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
 }
