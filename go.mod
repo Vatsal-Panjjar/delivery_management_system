@@ -1,4 +1,4 @@
- module github.com/Vatsal-Panjiar/delivery_management_system
+module github.com/Vatsal-Panjiar/delivery_management_system
 
 go 1.22
 
