@@ -1,0 +1,12 @@
+github.com/go-redis/redis/v8 v8.11.5 h1:wZHlGQxa6xaY/Ft24wqHU5kA2Tq2P5ZQ4Q+qFSbAD6s=
+github.com/go-redis/redis/v8 v8.11.5/go.mod h1:+5DfEwRzDgMhqS1hRFAx5PvUeh1xfj+5D9Z2pP3czM8=
+github.com/gorilla/mux v1.8.1 h1:rDzK0M9QczRqhvWnFqW1D7ya2NhrpsQtDKzPcgLdLLc=
+github.com/gorilla/mux v1.8.1/go.mod h1:+dPSlgLbUJS+fU+NLDvD9G9g/epAuyR8ebNULFfU/tg=
+github.com/jackc/pgx/v5 v5.5.4 h1:aN8vC9/7jEeiCIZV5v8dpg7KJKmUuz0qHLLID1DbD0g=
+github.com/jackc/pgx/v5 v5.5.4/go.mod h1:J4LmpEDoS2yK60K2y7HcPqXcnuV5u+RPDU7y0Ed4TzI=
+github.com/jackc/pgx/v5/stdlib v5.5.4 h1:KhnQK8JxY1jwo8uk1TfDKkIxy+1YbKROX7nG+GV3o2g=
+github.com/jackc/pgx/v5/stdlib v5.5.4/go.mod h1:J4LmpEDoS2yK60K2y7HcPqXcnuV5u+RPDU7y0Ed4TzI=
+github.com/stretchr/testify v1.9.0 h1:1fJAvKoUx7ZsJ1cMQIswu/uz5xJUFYt1EdUHfBjrY94=
+github.com/stretchr/testify v1.9.0/go.mod h1:qkYZlGJ+QGnyWJ7g4aPzA6z0WwYb1sI4c8xVf6EWYjE=
+golang.org/x/crypto v0.26.0 h1:Z0C5XwQv/jbLdAr6mltPZFxHZk7QhM7a3IuXZ5byKPg=
+golang.org/x/crypto v0.26.0/go.mod h1:hqgZbAPglxvE1ZStB0drdwlt2Lg4kWNdW4Kk1rFj5Zk=
