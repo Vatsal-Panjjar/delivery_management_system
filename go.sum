@@ -1,0 +1,12 @@
+github.com/go-chi/chi/v5 v5.2.3 h1:0a9giq3b/FGtO/xdmQJhJ0n5RZyMTF6kTT9fHhO14R0=
+github.com/go-chi/chi/v5 v5.2.3/go.mod h1:dtAv2nF8zHu6ANqJp55+ogj0v0E+n1ojFmHEmGZHPJ0=
+github.com/redis/go-redis/v9 v9.14.0 h1:6eRJcVVGgZ57b4fRy9rHULBo7g91Ajm5l1xz0cHUrBo=
+github.com/redis/go-redis/v9 v9.14.0/go.mod h1:n2YhfbE7snWjZkp+0Qmz8lHedWwq6Ey+E2qUzHpu5wE=
+github.com/jmoiron/sqlx v1.4.10 h1:Wq9Sn6nIjykRZ5YFyq6pOxUkD0c1wZtN/1O2v2hMGok=
+github.com/jmoiron/sqlx v1.4.10/go.mod h1:4rK96dtnjtfczxZtsCscxg+0A10/fjpXnQdT1N0xGkE=
+github.com/lib/pq v1.10.7 h1:ZVjdpH8QdnXz0UZPXg8P7EmD48RZDXQ57S8ohv3Ej6s=
+github.com/lib/pq v1.10.7/go.mod h1:U2l8oz9yC4q7G1kshy/9ybzYfD0wq4a3XrXcx1RKUc0=
+github.com/golang-jwt/jwt/v5 v5.3.0 h1:bJxW7P1b+kXr+ENXcT87Vr4Wj1kN0iEjhX5p8zjZoKU=
+github.com/golang-jwt/jwt/v5 v5.3.0/go.mod h1:XW0bHU3PTsUGxgkMdn4g8k3jh5+6gy9YIf9Ym6vGtb4=
+github.com/google/uuid v1.6.0 h1:2fOCqTxvzp1u+fV0nF9dXl6i3oP11Xp1x1i3gBKrWb0=
+github.com/google/uuid v1.6.0/go.mod h1:1s+TPh+F0G1+QbkYJXyA/7zNbhvU7nnvSxP26MiC7z8=
