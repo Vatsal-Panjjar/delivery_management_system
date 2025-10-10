@@ -1,12 +1,19 @@
-module github.com/Vatsal-Panjiar/delivery_management_system
+package main
 
-go 1.22
+import (
+    "fmt"
+    "net/http"
 
-require (
-    github.com/go-chi/chi/v5 v5.0.8
-    github.com/redis/go-redis/v9 v9.14.0
-    github.com/jmoiron/sqlx v1.4.10
-    github.com/lib/pq v1.10.7
-    github.com/golang-jwt/jwt/v5 v5.0.0
-    github.com/google/uuid v1.4.0
+    "github.com/go-chi/chi/v5"
+    "github.com/Vatsal-Panjiar/delivery_management_system/internal/handlers"
 )
+
+func main() {
+    r := chi.NewRouter()
+
+    // Register your routes
+    handlers.RegisterRoutes(r)
+
+    fmt.Println("Server running on :8080")
+    http.ListenAndServe(":8080", r)
+}
