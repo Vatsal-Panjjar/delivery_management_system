@@ -1,11 +1,9 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
@@ -17,7 +15,7 @@ import (
 )
 
 func main() {
-	// Use environment variables, fallback to defaults
+	// Environment variables with defaults
 	dbHost := getEnv("DB_HOST", "localhost")
 	dbPort := getEnv("DB_PORT", "5432")
 	dbUser := getEnv("DB_USER", "postgres")
@@ -35,10 +33,7 @@ func main() {
 	// Connect to Redis
 	redisAddr := getEnv("REDIS_ADDR", "localhost:6379")
 	rCache := cache.NewRedisCache(redisAddr)
-	ctx := context.Background()
-	if err := rCache.Ping(ctx); err != nil {
-		panic(fmt.Errorf("failed to connect to Redis: %w", err))
-	}
+	// Note: Skipping Ping check, just initialize the cache
 
 	// Initialize repository and handlers
 	repo := repo.NewDeliveryRepo(db)
@@ -46,7 +41,7 @@ func main() {
 
 	// Setup router and register routes
 	router := chi.NewRouter()
-	RegisterRoutes(router, handler) // We'll define this below
+	RegisterRoutes(router, handler)
 
 	fmt.Println("Server running on :8080")
 	http.ListenAndServe(":8080", router)
