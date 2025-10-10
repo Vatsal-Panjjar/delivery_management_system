@@ -14,6 +14,7 @@ import (
 	"github.com/Vatsal-Panjiar/delivery_management_system/internal/repo"
 )
 
+// DeliveryHandler handles delivery endpoints
 type DeliveryHandler struct {
 	Repo  *repo.DeliveryRepo
 	Cache *cache.RedisCache
@@ -25,25 +26,25 @@ func NewDeliveryHandler(r *repo.DeliveryRepo, c *cache.RedisCache) *DeliveryHand
 }
 
 func (h *DeliveryHandler) Create(w http.ResponseWriter, r *http.Request) {
-	var d models.Delivery
-	if err := json.NewDecoder(r.Body).Decode(&d); err != nil {
+	var req models.Delivery
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 
-	d.ID = uuid.NewString()
-	d.Status = "pending"
-	d.CreatedAt = time.Now()
-	d.UpdatedAt = time.Now()
+	req.ID = uuid.NewString()
+	req.Status = "pending"
+	req.CreatedAt = time.Now()
+	req.UpdatedAt = time.Now()
 
-	if err := h.Repo.Create(&d); err != nil {
-		http.Error(w, "failed to create delivery", http.StatusInternalServerError)
+	if err := h.Repo.Create(&req); err != nil {
+		http.Error(w, "failed", http.StatusInternalServerError)
 		return
 	}
 
-	h.Cache.Del("deliveries:pending")
+	_ = h.Cache.Del("deliveries:pending")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(d)
+	json.NewEncoder(w).Encode(req)
 }
 
 func (h *DeliveryHandler) Get(w http.ResponseWriter, r *http.Request) {
@@ -63,8 +64,7 @@ func (h *DeliveryHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	b, _ := json.Marshal(d)
-	h.Cache.Set(cacheKey, b, 5*time.Minute)
-
+	_ = h.Cache.Set(cacheKey, b, 5*time.Minute)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(b)
 }
@@ -89,8 +89,7 @@ func (h *DeliveryHandler) ListByStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	b, _ := json.Marshal(ds)
-	h.Cache.Set(cacheKey, b, 5*time.Minute)
-
+	_ = h.Cache.Set(cacheKey, b, 5*time.Minute)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(b)
 }
