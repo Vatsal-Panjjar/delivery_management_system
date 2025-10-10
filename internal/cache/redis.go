@@ -3,7 +3,7 @@ package cache
 
 import (
 "context"
-"github.com/go-redis/redis/v9"
+"github.com/go-redis/redis/v8"
 "time"
 )
 
