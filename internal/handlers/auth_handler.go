@@ -3,26 +3,27 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"github.com/Vatsal-Panjiar/delivery_management_system/internal/auth"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"github.com/Vatsal-Panjiar/delivery_management_system/internal/cache"
+	"github.com/Vatsal-Panjiar/delivery_management_system/internal/models"
+	"github.com/Vatsal-Panjiar/delivery_management_system/internal/repo"
+	"golang.org/x/crypto/bcrypt"
 )
 
-type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+var jwtSecret = []byte("supersecretkey") // replace with environment variable in prod
+
+// AuthHandler handles user authentication
+type AuthHandler struct {
+	UserRepo *repo.UserRepo
+	Cache    *cache.RedisCache
 }
 
-func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
-
-	// TODO: validate user from DB instead of hardcoding
-	if req.Username == "admin" && req.Password == "admin123" {
-		token, _ := auth.GenerateJWT("1", "admin")
-		json.NewEncoder(w).Encode(map[string]string{"token": token})
-	} else {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
-	}
+// NewAuthHandler returns a new AuthHandler
+func NewAuthHandler(r *repo.UserRepo, c *cache.RedisCache) *AuthHandler {
+	return &AuthHandler{UserRepo: r, Cache: c}
 }
+
+// SignupHandle
