@@ -24,7 +24,6 @@ func NewDeliveryHandler(r *repo.DeliveryRepo, c *cache.RedisCache) *DeliveryHand
 	return &DeliveryHandler{Repo: r, Cache: c}
 }
 
-// Create a new delivery
 func (h *DeliveryHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req models.Delivery
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -46,7 +45,6 @@ func (h *DeliveryHandler) Create(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(req)
 }
 
-// Get delivery by ID
 func (h *DeliveryHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	cacheKey := "delivery:" + id
@@ -65,12 +63,10 @@ func (h *DeliveryHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	b, _ := json.Marshal(d)
 	_ = h.Cache.Set(cacheKey, b, 5*time.Minute)
-
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(b)
 }
 
-// List deliveries by status
 func (h *DeliveryHandler) ListByStatus(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
 	if status == "" {
@@ -92,12 +88,10 @@ func (h *DeliveryHandler) ListByStatus(w http.ResponseWriter, r *http.Request) {
 
 	b, _ := json.Marshal(ds)
 	_ = h.Cache.Set(cacheKey, b, 5*time.Minute)
-
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(b)
 }
 
-// RegisterRoutes registers all delivery endpoints
 func RegisterRoutes(r *chi.Mux, h *DeliveryHandler) {
 	r.Post("/deliveries", h.Create)
 	r.Get("/deliveries/{id}", h.Get)
