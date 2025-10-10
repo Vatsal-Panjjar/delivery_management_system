@@ -4,13 +4,12 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func RegisterRoutes(r *chi.Mux, auth *AuthHandler, delivery *DeliveryHandler) {
+// RegisterRoutes sets up all routes for deliveries and auth
+func RegisterRoutes(r chi.Router, delivery *DeliveryHandler, auth *AuthHandler) {
+	r.Post("/deliveries", delivery.Create)
+	r.Get("/deliveries/{id}", delivery.Get)
+	r.Get("/deliveries", delivery.ListByStatus)
+
 	r.Post("/signup", auth.Signup)
 	r.Post("/login", auth.Login)
-
-	r.Route("/deliveries", func(r chi.Router) {
-		r.Post("/", delivery.Create)
-		r.Get("/", delivery.ListByStatus)
-		r.Get("/{id}", delivery.Get)
-	})
 }
