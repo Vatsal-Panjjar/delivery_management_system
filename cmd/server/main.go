@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
@@ -14,27 +15,37 @@ import (
 )
 
 func main() {
-	// Connect to Postgres
-	db, err := sqlx.Connect("postgres", "host=localhost port=5432 user=postgres password=rupupuru@01 dbname=delivery sslmode=disable")
+	// ----- Postgres -----
+	db, err := sqlx.Connect("postgres", "host=localhost port=5432 user=postgres password=your_password dbname=delivery sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
 
-	// Initialize repos
-	userRepo := repo.NewUserRepo(db)
-	deliveryRepo := repo.NewDeliveryRepo(db)
+	// ----- Repositories and Cache -----
+	rRepo := repo.NewDeliveryRepo(db)
+	rCache := cache.NewRedisCache("localhost:6379")
+	deliveryHandler := handlers.NewDeliveryHandler(rRepo, rCache)
+	authHandler := handlers.NewAuthHandler(db) // Handles signup/login
 
-	// Initialize Redis cache
-	redisCache := cache.NewRedisCache("localhost:6379")
-
-	// Initialize handlers
-	authHandler := handlers.NewAuthHandler(userRepo, []byte("mysecretkey"))
-	deliveryHandler := handlers.NewDeliveryHandler(deliveryRepo, redisCache)
-
-	// Setup router
+	// ----- Router -----
 	router := chi.NewRouter()
+
+	// Serve frontend static files
+	fs := http.FileServer(http.Dir("./frontend"))
+	router.Handle("/*", fs)
+
+	// Register API routes
 	handlers.RegisterRoutes(router, deliveryHandler, authHandler)
 
 	fmt.Println("Server running on :8080")
-	http.ListenAndServe(":8080", router)
+	srv := &http.Server{
+		Addr:         ":8080",
+		Handler:      router,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
+
+	if err := srv.ListenAndServe(); err != nil {
+		panic(err)
+	}
 }
