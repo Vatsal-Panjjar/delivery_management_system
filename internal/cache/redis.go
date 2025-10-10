@@ -8,28 +8,25 @@ import (
 )
 
 type RedisCache struct {
-	client *redis.Client
-	ctx    context.Context
+	Client *redis.Client
+	Ctx    context.Context
 }
 
 func NewRedisCache(addr string) *RedisCache {
-	r := redis.NewClient(&redis.Options{
+	rdb := redis.NewClient(&redis.Options{
 		Addr: addr,
 	})
-	return &RedisCache{
-		client: r,
-		ctx:    context.Background(),
-	}
-}
-
-func (r *RedisCache) Set(key string, value []byte, ttl time.Duration) error {
-	return r.client.Set(r.ctx, key, value, ttl).Err()
+	return &RedisCache{Client: rdb, Ctx: context.Background()}
 }
 
 func (r *RedisCache) Get(key string) (string, error) {
-	return r.client.Get(r.ctx, key).Result()
+	return r.Client.Get(r.Ctx, key).Result()
+}
+
+func (r *RedisCache) Set(key string, value []byte, ttl time.Duration) error {
+	return r.Client.Set(r.Ctx, key, value, ttl).Err()
 }
 
 func (r *RedisCache) Del(key string) error {
-	return r.client.Del(r.ctx, key).Err()
+	return r.Client.Del(r.Ctx, key).Err()
 }
