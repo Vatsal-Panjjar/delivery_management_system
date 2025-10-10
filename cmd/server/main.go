@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jmoiron/sqlx"
@@ -15,32 +16,34 @@ import (
 )
 
 func main() {
-	// Connect to PostgreSQL
 	db, err := sqlx.Connect("postgres", "host=localhost port=5432 user=postgres password=YOUR_PASSWORD dbname=delivery sslmode=disable")
 	if err != nil {
-		log.Fatal("PostgreSQL connection failed:", err)
+		log.Fatal(err)
 	}
 
-	// Initialize repository and cache
+	// Repositories
+	userRepo := repo.NewUserRepo(db)
 	deliveryRepo := repo.NewDeliveryRepo(db)
-	redisCache := cache.NewRedisCache("localhost:6379")
 
-	// Initialize handlers
-	deliveryHandler := handlers.NewDeliveryHandler(deliveryRepo, redisCache)
+	// Redis cache
+	rCache := cache.NewRedisCache("localhost:6379")
 
-	// Initialize router
+	// Handlers
+	authHandler := handlers.NewAuthHandler(userRepo)
+	deliveryHandler := handlers.NewDeliveryHandler(deliveryRepo, rCache)
+
+	// Router
 	router := chi.NewRouter()
+	handlers.RegisterAuthRoutes(router, authHandler)
+	handlers.RegisterDeliveryRoutes(router, deliveryHandler)
 
-	// Register API routes
-	handlers.RegisterRoutes(router, deliveryHandler)
-
-	// Serve frontend files from web folder
-	fs := http.FileServer(http.Dir("./web"))
-	router.Handle("/*", fs)
-
-	// Start server
 	fmt.Println("Server running on :8080")
-	if err := http.ListenAndServe(":8080", router); err != nil {
-		log.Fatal("Server failed:", err)
+	srv := &http.Server{
+		Addr:         ":8080",
+		Handler:      router,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
+
+	log.Fatal(srv.ListenAndServe())
 }
