@@ -1,11 +1,10 @@
-
 package handlers
 
 import (
     "encoding/json"
     "net/http"
-    "time"
     "sync"
+    "time"
 
     "github.com/go-chi/chi/v5"
     "github.com/google/uuid"
@@ -13,8 +12,8 @@ import (
     "github.com/Vatsal-Panjiar/delivery_management_system/internal/models"
     "github.com/Vatsal-Panjiar/delivery_management_system/internal/repo"
     "github.com/Vatsal-Panjiar/delivery_management_system/internal/cache"
-    "github.com/Vatsal-Panjiar/delivery_management_system/internal/auth"
 )
+
 
 
 
