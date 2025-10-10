@@ -1,11 +1,31 @@
-module github.com/Vatsal-Panjiar/delivery_management_system
+package main
 
-go 1.22
+import (
+	"fmt"
+	"net/http"
 
-require (
-	github.com/go-chi/chi/v5 v5.0.8
-	github.com/redis/go-redis/v9 v9.14.0
-	github.com/jmoiron/sqlx v1.4.10
-	github.com/lib/pq v1.10.7
-	github.com/google/uuid v1.4.0
+	"github.com/go-chi/chi/v5"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
+
+	"github.com/Vatsal-Panjiar/delivery_management_system/internal/cache"
+	"github.com/Vatsal-Panjiar/delivery_management_system/internal/handlers"
+	"github.com/Vatsal-Panjiar/delivery_management_system/internal/repo"
 )
+
+func main() {
+	db, err := sqlx.Connect("postgres", "postgres://user:pass@localhost:5432/delivery?sslmode=disable")
+	if err != nil {
+		panic(err)
+	}
+
+	r := repo.NewDeliveryRepo(db)
+	c := cache.NewRedisCache("localhost:6379")
+	h := handlers.NewDeliveryHandler(r, c)
+
+	router := chi.NewRouter()
+	handlers.RegisterRoutes(router, h)
+
+	fmt.Println("Server running on :8080")
+	http.ListenAndServe(":8080", router)
+}
