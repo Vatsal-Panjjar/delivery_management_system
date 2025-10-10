@@ -1,39 +1,29 @@
+document.getElementById("loginForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const res = await fetch("/auth/login", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+            username: document.getElementById("username").value,
+            password: document.getElementById("password").value
+        })
+    });
+    const data = await res.json();
+    localStorage.setItem("token", data.token);
+    window.location.href = "dashboard.html";
+});
+
 async function loadDeliveries() {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    window.location.href = "login.html";
-    return;
-  }
-
-  const res = await fetch("/deliveries?status=pending", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  const deliveries = await res.json();
-  const container = document.getElementById("deliveries");
-
-  if (!deliveries || deliveries.length === 0) {
-    container.innerHTML = "<p>No deliveries found.</p>";
-    return;
-  }
-
-  container.innerHTML = deliveries
-    .map(
-      (d) => `
-    <div class="delivery-card">
-      <h4>Delivery ID: ${d.id}</h4>
-      <p>Status: ${d.status}</p>
-      <p>Pickup: ${d.pickup_address}</p>
-      <p>Dropoff: ${d.dropoff_address}</p>
-    </div>
-  `
-    )
-    .join("");
+    const token = localStorage.getItem("token");
+    const res = await fetch("/deliveries?status=pending", {
+        headers: { "Authorization": `Bearer ${token}` }
+    });
+    const deliveries = await res.json();
+    const ul = document.getElementById("deliveries");
+    if (ul) deliveries.forEach(d => {
+        const li = document.createElement("li");
+        li.innerText = `${d.pickupAddr} -> ${d.dropoffAddr} [${d.status}]`;
+        ul.appendChild(li);
+    });
 }
-
-function logout() {
-  localStorage.removeItem("token");
-  window.location.href = "login.html";
-}
-
-window.onload = loadDeliveries;
+loadDeliveries();
