@@ -4,7 +4,11 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func RegisterAuthRoutes(r chi.Router, h *AuthHandler) {
-	r.Post("/signup", h.Signup)
-	r.Post("/login", h.Login)
+func RegisterRoutes(r *chi.Mux, dh *DeliveryHandler, ah *AuthHandler) {
+	r.Post("/register", ah.Register)
+	r.Post("/login", ah.Login)
+
+	r.Post("/deliveries", dh.Create)
+	r.Get("/deliveries", dh.ListByStatus)
+	r.Get("/deliveries/{id}", dh.Get)
 }
