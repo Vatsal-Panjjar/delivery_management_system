@@ -13,20 +13,15 @@ type RedisCache struct {
 }
 
 func NewRedisCache(addr string) *RedisCache {
-	rdb := redis.NewClient(&redis.Options{
-		Addr: addr,
-	})
-	return &RedisCache{Client: rdb, Ctx: context.Background()}
+	ctx := context.Background()
+	client := redis.NewClient(&redis.Options{Addr: addr})
+	return &RedisCache{Client: client, Ctx: ctx}
+}
+
+func (r *RedisCache) Set(key string, value interface{}, ttl time.Duration) error {
+	return r.Client.Set(r.Ctx, key, value, ttl).Err()
 }
 
 func (r *RedisCache) Get(key string) (string, error) {
 	return r.Client.Get(r.Ctx, key).Result()
-}
-
-func (r *RedisCache) Set(key string, value []byte, ttl time.Duration) error {
-	return r.Client.Set(r.Ctx, key, value, ttl).Err()
-}
-
-func (r *RedisCache) Del(key string) error {
-	return r.Client.Del(r.Ctx, key).Err()
 }
