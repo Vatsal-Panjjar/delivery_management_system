@@ -9,14 +9,14 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 
-	"github.com/Vatsal-Panjiar/delivery_management_system/internal/auth"
-	"github.com/Vatsal-Panjiar/delivery_management_system/internal/cache"
-	"github.com/Vatsal-Panjiar/delivery_management_system/internal/handlers"
-	"github.com/Vatsal-Panjiar/delivery_management_system/internal/repo"
+	"github.com/YOUR_USERNAME/delivery_management_system/internal/auth"
+	"github.com/YOUR_USERNAME/delivery_management_system/internal/cache"
+	"github.com/YOUR_USERNAME/delivery_management_system/internal/handlers"
+	"github.com/YOUR_USERNAME/delivery_management_system/internal/repo"
 )
 
 func main() {
-	db, err := sqlx.Connect("postgres", "host=localhost port=5432 user=postgres password=YOUR_PASSWORD dbname=delivery sslmode=disable")
+	db, err := sqlx.Connect("postgres", "host=localhost port=5432 user=postgres password=rupupuru@01 dbname=delivery sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
