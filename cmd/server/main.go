@@ -21,7 +21,7 @@ func main() {
 	dbHost := getEnv("DB_HOST", "localhost")
 	dbPort := getEnv("DB_PORT", "5432")
 	dbUser := getEnv("DB_USER", "postgres")
-	dbPassword := getEnv("DB_PASSWORD", "password")
+	dbPassword := getEnv("DB_PASSWORD", "rupupuru@01")
 	dbName := getEnv("DB_NAME", "delivery")
 
 	// Connect to Postgres
