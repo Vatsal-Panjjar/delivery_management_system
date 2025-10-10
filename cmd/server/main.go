@@ -14,15 +14,21 @@ import (
 )
 
 func main() {
-	db, _ := sqlx.Connect("postgres", "host=localhost port=5432 user=postgres password=YOUR_PASSWORD dbname=delivery sslmode=disable")
+	db, err := sqlx.Connect("postgres", "host=localhost port=5432 user=postgres password=rupupuru@01 dbname=delivery sslmode=disable")
+	if err != nil {
+		panic(err)
+	}
 
 	userRepo := repo.NewUserRepo(db)
-	authHandler := handlers.NewAuthHandler(userRepo, []byte("secretkey"))
-
 	deliveryRepo := repo.NewDeliveryRepo(db)
 	rCache := cache.NewRedisCache("localhost:6379")
-	dHandler := handlers.NewDeliveryHandler(deliveryRepo, rCache)
+
+	authHandler := handlers.NewAuthHandler(userRepo, []byte("supersecretkey"))
+	deliveryHandler := handlers.NewDeliveryHandler(deliveryRepo, rCache)
 
 	router := chi.NewRouter()
-	router.Post("/auth/signup", authHandler.Signup)
-	router.Post("/auth/login
+	handlers.RegisterRoutes(router, authHandler, deliveryHandler)
+
+	fmt.Println("Server running on :8080")
+	http.ListenAndServe(":8080", router)
+}
