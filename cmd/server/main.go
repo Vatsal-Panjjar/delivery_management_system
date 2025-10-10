@@ -1,19 +1,32 @@
 package main
 
 import (
-    "fmt"
-    "net/http"
+	"fmt"
+	"net/http"
 
-    "github.com/go-chi/chi/v5"
-    "github.com/Vatsal-Panjiar/delivery_management_system/internal/handlers"
+	"github.com/go-chi/chi/v5"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
+
+	"github.com/Vatsal-Panjiar/delivery_management_system/internal/cache"
+	"github.com/Vatsal-Panjiar/delivery_management_system/internal/handlers"
+	"github.com/Vatsal-Panjiar/delivery_management_system/internal/repo"
 )
 
 func main() {
-    r := chi.NewRouter()
+	// Connect to Postgres
+	db, err := sqlx.Connect("postgres", "postgres://user:pass@localhost:5432/delivery?sslmode=disable")
+	if err != nil {
+		panic(err)
+	}
 
-    // Register your routes
-    handlers.RegisterRoutes(r)
+	r := repo.NewDeliveryRepo(db)
+	c := cache.NewRedisCache("localhost:6379")
+	h := handlers.NewDeliveryHandler(r, c)
 
-    fmt.Println("Server running on :8080")
-    http.ListenAndServe(":8080", r)
+	router := chi.NewRouter()
+	handlers.RegisterRoutes(router, h)
+
+	fmt.Println("Server running on :8080")
+	http.ListenAndServe(":8080", router)
 }
