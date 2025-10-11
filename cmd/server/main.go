@@ -4,7 +4,6 @@ import (
     "fmt"
     "log"
     "net/http"
-    "os"
 
     "github.com/go-chi/chi/v5"
     "github.com/go-redis/redis/v8"
@@ -17,9 +16,10 @@ import (
 func main() {
     fmt.Println("Starting Delivery Management Server...")
 
-    // Load environment variables
-    dbURL := os.Getenv("POSTGRES_URL") // e.g., "postgres://user:pass@localhost:5432/delivery_db?sslmode=disable"
-    redisAddr := os.Getenv("REDIS_ADDR") // e.g., "localhost:6379"
+    // === Hardcoded database and Redis info ===
+    dbURL := "postgres://postgres:MySecretPass123@localhost:5432/delivery_db?sslmode=disable"
+    redisAddr := "localhost:6379"
+    // ========================================
 
     // Connect to Postgres
     db, err := sqlx.Connect("postgres", dbURL)
@@ -42,7 +42,7 @@ func main() {
     // Create router
     r := chi.NewRouter()
 
-    // Routes
+    // Base route
     r.Get("/", func(w http.ResponseWriter, r *http.Request) {
         w.Write([]byte("Delivery Management System API is running"))
     })
@@ -50,11 +50,8 @@ func main() {
     // Mount order routes
     handlers.RegisterOrderRoutes(r, db, rdb)
 
-    // Start server
-    port := os.Getenv("PORT")
-    if port == "" {
-        port = "8080"
-    }
+    // Start server on default port 8080
+    port := "8080"
     fmt.Printf("Server running on port %s\n", port)
     log.Fatal(http.ListenAndServe(":"+port, r))
 }
