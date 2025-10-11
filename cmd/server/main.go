@@ -17,7 +17,7 @@ func main() {
     fmt.Println("Starting Delivery Management Server...")
 
     // === Hardcoded database and Redis info ===
-    dbURL := "postgres://postgres:rupupuru@01@localhost:5432/delivery_db?sslmode=disable"
+    dbURL := "postgres://postgres:MySecretPass123@localhost:5432/delivery_db?sslmode=disable"
     redisAddr := "localhost:6379"
     // ========================================
 
@@ -42,15 +42,23 @@ func main() {
     // Create router
     r := chi.NewRouter()
 
-    // Base route
+    // Redirect root to login page
     r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-        w.Write([]byte("Delivery Management System API is running"))
+        http.Redirect(w, r, "/web/index.html", http.StatusSeeOther)
+    })
+
+    // Serve static web files
+    r.Handle("/web/*", http.StripPrefix("/web/", http.FileServer(http.Dir("./web"))))
+
+    // API base route
+    r.Get("/api", func(w http.ResponseWriter, r *http.Request) {
+        w.Write([]byte("Delivery Management API is running"))
     })
 
     // Mount order routes
     handlers.RegisterOrderRoutes(r, db, rdb)
 
-    // Start server on default port 8080
+    // Start server on port 8080
     port := "8080"
     fmt.Printf("Server running on port %s\n", port)
     log.Fatal(http.ListenAndServe(":"+port, r))
