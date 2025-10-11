@@ -1,43 +1,66 @@
-package auth
+package handlers
 
 import (
-    "errors"
+    "encoding/json"
+    "net/http"
     "time"
 
-    "github.com/golang-jwt/jwt/v5"
-    "golang.org/x/crypto/bcrypt"
+    "github.com/Vatsal-Panjjar/delivery_management_system/internal/auth"
+    "github.com/jmoiron/sqlx"
 )
 
-var jwtSecret = []byte("YourJWTSecretKey")
-
-func HashPassword(password string) (string, error) {
-    hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-    return string(hash), err
+type RegisterRequest struct {
+    Username string `json:"username"`
+    Password string `json:"password"`
 }
 
-func CheckPassword(hash, password string) error {
-    return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+type LoginRequest struct {
+    Username string `json:"username"`
+    Password string `json:"password"`
 }
 
-func GenerateToken(username, role string) (string, error) {
-    claims := jwt.MapClaims{
-        "username": username,
-        "role":     role,
-        "exp":      time.Now().Add(24 * time.Hour).Unix(),
+func RegisterHandler(db *sqlx.DB) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        var req RegisterRequest
+        if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+            http.Error(w, "Invalid request", http.StatusBadRequest)
+            return
+        }
+        _, err := db.Exec("INSERT INTO users (username, password, role) VALUES ($1, $2, 'customer')",
+            req.Username, req.Password)
+        if err != nil {
+            http.Error(w, "Failed to register", http.StatusInternalServerError)
+            return
+        }
+        w.WriteHeader(http.StatusCreated)
     }
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    return token.SignedString(jwtSecret)
 }
 
-func ParseToken(tokenStr string) (jwt.MapClaims, error) {
-    token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-        return jwtSecret, nil
-    })
-    if err != nil {
-        return nil, err
+func LoginHandler(db *sqlx.DB) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        var req LoginRequest
+        if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+            http.Error(w, "Invalid request", http.StatusBadRequest)
+            return
+        }
+
+        var dbPassword, role string
+        err := db.QueryRow("SELECT password, role FROM users WHERE username=$1", req.Username).
+            Scan(&dbPassword, &role)
+        if err != nil || dbPassword != req.Password {
+            http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+            return
+        }
+
+        token, err := auth.GenerateToken(req.Username, role) // updated to match current auth
+        if err != nil {
+            http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+            return
+        }
+
+        json.NewEncoder(w).Encode(map[string]string{
+            "token": token,
+            "role":  role,
+        })
     }
-    if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-        return claims, nil
-    }
-    return nil, errors.New("invalid token")
 }
