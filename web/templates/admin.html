@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Delivery Management</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <h1>Admin Dashboard</h1>
+        <a href="/logout" class="btn">Logout</a>
+    </header>
+    <main>
+        <section>
+            <h2>All Orders</h2>
+            <table id="adminOrdersTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>UserID</th>
+                        <th>Source</th>
+                        <th>Destination</th>
+                        <th>Status</th>
+                        <th>Update Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Orders populated here by JS -->
+                </tbody>
+            </table>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2025 Delivery Management System</p>
+    </footer>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
