@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Dashboard</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container">
+    <h2>My Orders</h2>
+    <form id="orderForm">
+        <input type="text" id="description" placeholder="Order Description" required>
+        <button type="submit">Create Order</button>
+    </form>
+    <ul id="ordersList"></ul>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+if(!token) window.location.href = 'index.html';
+
+async function loadOrders() {
+    const res = await fetch('/orders', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const orders = await res.json();
+    const list = document.getElementById('ordersList');
+    list.innerHTML = '';
+    orders.forEach(o => {
+        const li = document.createElement('li');
+        li.textContent = `${o.description} - ${o.status}`;
+        if(o.status !== 'cancelled'){
+            const btn = document.createElement('button');
+            btn.textContent = 'Cancel';
+            btn.onclick = async () => {
+                await fetch(`/orders/${o.id}/cancel`, {
+                    method:'POST',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                loadOrders();
+            };
+            li.appendChild(btn);
+        }
+        list.appendChild(li);
+    });
+}
+
+document.getElementById('orderForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const description = document.getElementById('description').value;
+    await fetch('/orders', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json', 'Authorization':'Bearer '+token},
+        body: JSON.stringify({description})
+    });
+    loadOrders();
+});
+
+loadOrders();
+</script>
+</body>
+</html>
