@@ -1,56 +1,74 @@
 package main
 
 import (
-    "fmt"
-    "log"
-    "net/http"
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"time"
 
-    "github.com/go-chi/chi/v5"
-    "github.com/go-redis/redis/v8"
-    "github.com/jmoiron/sqlx"
-    _ "github.com/lib/pq"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-redis/redis/v8"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 
-    "github.com/Vatsal-Panjjar/delivery_management_system/internal/handlers"
+	"github.com/Vatsal-Panjjar/delivery_management_system/internal/cache"
+	"github.com/Vatsal-Panjjar/delivery_management_system/internal/db"
+	"github.com/Vatsal-Panjjar/delivery_management_system/internal/handlers"
+	"github.com/Vatsal-Panjjar/delivery_management_system/internal/workers"
 )
 
 func main() {
-    fmt.Println("Starting Delivery Management Server...")
+	pgURL := os.Getenv("POSTGRES_URL")
+	if pgURL == "" {
+		pgURL = "postgres://postgres:rupupuru@01@localhost:5432/delivery_db?sslmode=disable"
+	}
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
 
-    dbURL := "postgres://postgres:rupupuru@01@localhost:5432/delivery_db?sslmode=disable"
-    redisAddr := "localhost:6379"
+	sqlxDB, err := sqlx.Connect("postgres", pgURL)
+	if err != nil {
+		log.Fatalf("failed to connect to postgres: %v", err)
+	}
+	defer sqlxDB.Close()
+	fmt.Println("Connected to Postgres")
 
-    db, err := sqlx.Connect("postgres", dbURL)
-    if err != nil {
-        log.Fatalf("Failed to connect to Postgres: %v", err)
-    }
-    defer db.Close()
-    fmt.Println("Connected to Postgres")
+	rdb := redis.NewClient(&redis.Options{Addr: redisAddr})
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := rdb.Ping(ctx).Err(); err != nil {
+		log.Fatalf("failed to connect redis: %v", err)
+	}
+	fmt.Println("Connected to Redis")
 
-    rdb := redis.NewClient(&redis.Options{Addr: redisAddr})
-    _, err = rdb.Ping(rdb.Context()).Result()
-    if err != nil {
-        log.Fatalf("Failed to connect to Redis: %v", err)
-    }
-    fmt.Println("Connected to Redis")
+	store := db.New(sqlxDB)
+	cacheClient := cache.New(rdb)
 
-    r := chi.NewRouter()
+	// start async tracker
+	tracker := workers.NewOrderTracker(store, cacheClient)
+	tracker.Start()
+	defer tracker.Stop()
 
-    // Root
-    r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-        w.Write([]byte("Delivery Management System API is running"))
-    })
+	r := chi.NewRouter()
 
-    // Auth routes (updated to accept *chi.Mux)
-    handlers.RegisterRoutes(r, db)
+	// Serve static web files (html/css/js)
+	fs := http.FileServer(http.Dir("./web"))
+	r.Handle("/*", http.StripPrefix("/", fs))
 
-    // Order routes
-    handlers.RegisterOrderRoutes(r, db, rdb)
+	// API mount
+	api := chi.NewRouter()
+	handlers.RegisterAuthHandlers(api, store, cacheClient)
+	handlers.RegisterOrderHandlers(api, store, cacheClient, tracker)
+	handlers.RegisterAdminHandlers(api, store, cacheClient, tracker)
+	r.Mount("/api", api)
 
-    // Serve static HTML
-    fs := http.FileServer(http.Dir("./web"))
-    r.Handle("/*", http.StripPrefix("/", fs))
-
-    port := "8080"
-    fmt.Printf("Server running on http://localhost:%s\n", port)
-    log.Fatal(http.ListenAndServe(":"+port, r))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	fmt.Printf("Server running on http://localhost:%s\n", port)
+	log.Fatal(http.ListenAndServe(":"+port, r))
 }
