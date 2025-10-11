@@ -17,7 +17,7 @@ func main() {
     fmt.Println("Starting Delivery Management Server...")
 
     // === Hardcoded database and Redis info ===
-    dbURL := "postgres://postgres:MySecretPass123@localhost:5432/delivery_db?sslmode=disable"
+    dbURL := "postgres://postgres:rupupuru@01@localhost:5432/delivery_db?sslmode=disable"
     redisAddr := "localhost:6379"
     // ========================================
 
