@@ -1,63 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>User Dashboard</title>
-<link rel="stylesheet" href="css/style.css">
+    <meta charset="UTF-8">
+    <title>Dashboard - Delivery System</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        input, button { margin: 5px 0; padding: 8px; width: 300px; }
+        li { margin: 5px 0; }
+    </style>
 </head>
 <body>
-<div class="container">
-    <h2>My Orders</h2>
-    <form id="orderForm">
-        <input type="text" id="description" placeholder="Order Description" required>
-        <button type="submit">Create Order</button>
-    </form>
-    <ul id="ordersList"></ul>
-</div>
+    <h2>Dashboard</h2>
+    <input type="text" id="orderDesc" placeholder="Order Description">
+    <button onclick="createOrder()">Create Order</button>
+    <h3>Your Orders</h3>
+    <ul id="orderList"></ul>
 
-<script>
-const token = localStorage.getItem('token');
-if(!token) window.location.href = 'index.html';
+    <script>
+        const token = localStorage.getItem("token");
+        if (!token) window.location.href = "index.html";
 
-async function loadOrders() {
-    const res = await fetch('/orders', {
-        headers: { 'Authorization': 'Bearer ' + token }
-    });
-    const orders = await res.json();
-    const list = document.getElementById('ordersList');
-    list.innerHTML = '';
-    orders.forEach(o => {
-        const li = document.createElement('li');
-        li.textContent = `${o.description} - ${o.status}`;
-        if(o.status !== 'cancelled'){
-            const btn = document.createElement('button');
-            btn.textContent = 'Cancel';
-            btn.onclick = async () => {
-                await fetch(`/orders/${o.id}/cancel`, {
-                    method:'POST',
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                loadOrders();
-            };
-            li.appendChild(btn);
+        async function fetchOrders() {
+            const res = await fetch('/orders', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const orders = await res.json();
+            const list = document.getElementById("orderList");
+            list.innerHTML = '';
+            orders.forEach(o => {
+                const li = document.createElement('li');
+                li.textContent = `#${o.id} - ${o.description} - ${o.status}`;
+                if(o.status !== 'cancelled') {
+                    const btn = document.createElement('button');
+                    btn.textContent = "Cancel";
+                    btn.onclick = () => cancelOrder(o.id);
+                    li.appendChild(btn);
+                }
+                list.appendChild(li);
+            });
         }
-        list.appendChild(li);
-    });
-}
 
-document.getElementById('orderForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const description = document.getElementById('description').value;
-    await fetch('/orders', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json', 'Authorization':'Bearer '+token},
-        body: JSON.stringify({description})
-    });
-    loadOrders();
-});
+        async function createOrder() {
+            const desc = document.getElementById("orderDesc").value;
+            const res = await fetch('/orders', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token 
+                },
+                body: JSON.stringify({ description: desc })
+            });
+            if (res.ok) fetchOrders();
+        }
 
-loadOrders();
-</script>
+        async function cancelOrder(id) {
+            const res = await fetch(`/orders/${id}/cancel`, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (res.ok) fetchOrders();
+        }
+
+        fetchOrders();
+        setInterval(fetchOrders, 5000); // auto-refresh every 5 seconds
+    </script>
 </body>
 </html>
