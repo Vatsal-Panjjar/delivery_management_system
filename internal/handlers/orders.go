@@ -1,4 +1,21 @@
-// inside RegisterOrderRoutes
+package handlers
+
+import (
+    "encoding/json"
+    "net/http"
+
+    "github.com/go-chi/chi/v5"
+    "github.com/go-redis/redis/v8"
+    "github.com/jmoiron/sqlx"
+)
+
+type Order struct {
+    ID          int    `db:"id" json:"id"`
+    Username    string `db:"username" json:"username"`
+    Description string `db:"description" json:"description"`
+    Status      string `db:"status" json:"status"`
+}
+
 func RegisterOrderRoutes(r *chi.Mux, db *sqlx.DB, rdb *redis.Client) {
     r.Route("/orders", func(r chi.Router) {
         r.Use(AuthMiddleware) // JWT auth
@@ -23,7 +40,8 @@ func RegisterOrderRoutes(r *chi.Mux, db *sqlx.DB, rdb *redis.Client) {
             claims := r.Context().Value("user").(map[string]interface{})
             username := claims["username"].(string)
 
-            _, err := db.Exec("INSERT INTO orders (username, description, status) VALUES ($1,$2,'pending')", username, input.Description)
+            _, err := db.Exec("INSERT INTO orders (username, description, status) VALUES ($1,$2,'pending')",
+                username, input.Description)
             if err != nil {
                 http.Error(w, "Failed to create order", http.StatusInternalServerError)
                 return
