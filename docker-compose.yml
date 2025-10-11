@@ -26,7 +26,7 @@ services:
       - postgres
       - redis
     environment:
-      DATABASE_URL: postgres://postgres:password@postgres:5432/delivery_db?sslmode=disable
+      DATABASE_URL: postgres://postgres:password@postgres:5432/delivery?sslmode=disable
       REDIS_ADDR: redis:6379
       PORT: 8080
     ports:
