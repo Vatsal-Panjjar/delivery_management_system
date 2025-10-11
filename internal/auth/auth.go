@@ -1,29 +1,47 @@
 package auth
 
 import (
-    "time"
-    "github.com/golang-jwt/jwt/v5"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtKey = []byte("YourSecretKey") // change this to a strong secret
+var jwtSecret = []byte("YourSuperSecretKey") // <-- replace with a secure secret
 
-func GenerateToken(username, role string) (string, error) {
-    claims := jwt.MapClaims{
-        "username": username,
-        "role":     role,
-        "exp":      time.Now().Add(time.Hour * 24).Unix(),
-    }
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    return token.SignedString(jwtKey)
+// UserClaims represents the JWT claims
+type UserClaims struct {
+	UserID string `json:"user_id"`
+	Role   string `json:"role"`
+	jwt.RegisteredClaims
 }
 
-func ParseToken(tokenStr string) (map[string]interface{}, error) {
-    claims := jwt.MapClaims{}
-    token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
-        return jwtKey, nil
-    })
-    if err != nil || !token.Valid {
-        return nil, err
-    }
-    return claims, nil
+// GenerateToken generates a JWT token for a given user
+func GenerateToken(userID, role string) (string, error) {
+	claims := UserClaims{
+		UserID: userID,
+		Role:   role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)), // token valid for 24h
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(jwtSecret)
+}
+
+// ParseToken validates the JWT token and returns userID and role
+func ParseToken(tokenStr string) (string, string) {
+	token, err := jwt.ParseWithClaims(tokenStr, &UserClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return jwtSecret, nil
+	})
+	if err != nil || !token.Valid {
+		return "", ""
+	}
+
+	if claims, ok := token.Claims.(*UserClaims); ok {
+		return claims.UserID, claims.Role
+	}
+
+	return "", ""
 }
