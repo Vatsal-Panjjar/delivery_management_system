@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container">
+    <h2>Admin Dashboard</h2>
+    <h3>Orders</h3>
+    <ul id="ordersList"></ul>
+    <h3>Users</h3>
+    <ul id="usersList"></ul>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+if(!token) window.location.href = 'index.html';
+
+async function loadOrders(){
+    const res = await fetch('/admin/orders', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const orders = await res.json();
+    const list = document.getElementById('ordersList');
+    list.innerHTML = '';
+    orders.forEach(o => {
+        const li = document.createElement('li');
+        li.textContent = `${o.username}: ${o.description} - ${o.status}`;
+        const btn = document.createElement('button');
+        btn.textContent = 'Mark Delivered';
+        btn.onclick = async () => {
+            await fetch(`/admin/orders/${o.id}/update`, {
+                method: 'POST',
+                headers: {'Content-Type':'application/json', 'Authorization':'Bearer '+token},
+                body: JSON.stringify({status:'delivered'})
+            });
+            loadOrders();
+        };
+        li.appendChild(btn);
+        list.appendChild(li);
+    });
+}
+
+async function loadUsers(){
+    const res = await fetch('/admin/users', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const users = await res.json();
+    const list = document.getElementById('usersList');
+    list.innerHTML = '';
+    users.forEach(u => {
+        const li = document.createElement('li');
+        li.textContent = `${u.username} - ${u.role}`;
+        const btn = document.createElement('button');
+        btn.textContent = u.role === 'admin' ? 'Make Customer' : 'Make Admin';
+        btn.onclick = async () => {
+            await fetch(`/admin/users/${u.id}/role`, {
+                method:'POST',
+                headers: {'Content-Type':'application/json', 'Authorization':'Bearer '+token},
+                body: JSON.stringify({role:u.role==='admin'?'customer':'admin'})
+            });
+            loadUsers();
+        };
+        li.appendChild(btn);
+        list.appendChild(li);
+    });
+}
+
+loadOrders();
+loadUsers();
+</script>
+</body>
+</html>
