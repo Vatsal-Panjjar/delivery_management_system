@@ -1,23 +1,11 @@
 package db
 
-import (
-    "log"
+import "github.com/jmoiron/sqlx"
 
-    "github.com/jmoiron/sqlx"
-    _ "github.com/lib/pq"
-)
+type Store struct {
+	DB *sqlx.DB
+}
 
-var DB *sqlx.DB
-
-func Init() {
-    // Hardcoded Postgres connection string
-    dbURL := "postgres://postgres:MySecretPass123@localhost:5432/delivery_db?sslmode=disable"
-
-    var err error
-    DB, err = sqlx.Connect("postgres", dbURL)
-    if err != nil {
-        log.Fatalf("Failed to connect to Postgres: %v", err)
-    }
-
-    log.Println("Connected to Postgres")
+func New(db *sqlx.DB) *Store {
+	return &Store{DB: db}
 }
