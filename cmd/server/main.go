@@ -17,7 +17,7 @@ func main() {
     fmt.Println("Starting Delivery Management Server...")
 
     // PostgreSQL connection
-    dbURL := "postgres://postgres:MySecretPass123@localhost:5432/delivery_db?sslmode=disable"
+    dbURL := "postgres://postgres:rupupuru@01@localhost:5432/delivery_db?sslmode=disable"
     db, err := sqlx.Connect("postgres", dbURL)
     if err != nil {
         log.Fatalf("Failed to connect to Postgres: %v", err)
