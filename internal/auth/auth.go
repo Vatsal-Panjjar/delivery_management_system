@@ -1,47 +1,54 @@
 package auth
 
 import (
+	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
-var jwtSecret = []byte("YourSuperSecretKey") // <-- replace with a secure secret
+var jwtSecret = []byte("YourSecretKey123") // replace with your secret
 
-// UserClaims represents the JWT claims
-type UserClaims struct {
-	UserID string `json:"user_id"`
-	Role   string `json:"role"`
+type Claims struct {
+	Username string `json:"username"`
 	jwt.RegisteredClaims
 }
 
-// GenerateToken generates a JWT token for a given user
-func GenerateToken(userID, role string) (string, error) {
-	claims := UserClaims{
-		UserID: userID,
-		Role:   role,
+// HashPassword hashes the password
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(bytes), err
+}
+
+// CheckPassword verifies the password
+func CheckPassword(hash, password string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
+// GenerateToken generates a JWT for a username
+func GenerateToken(username string) (string, error) {
+	claims := &Claims{
+		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)), // token valid for 24h
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 		},
 	}
-
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(jwtSecret)
 }
 
-// ParseToken validates the JWT token and returns userID and role
-func ParseToken(tokenStr string) (string, string) {
-	token, err := jwt.ParseWithClaims(tokenStr, &UserClaims{}, func(token *jwt.Token) (interface{}, error) {
+// ParseToken verifies JWT and returns username
+func ParseToken(tokenStr string) (string, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		return jwtSecret, nil
 	})
-	if err != nil || !token.Valid {
-		return "", ""
+	if err != nil {
+		return "", err
 	}
-
-	if claims, ok := token.Claims.(*UserClaims); ok {
-		return claims.UserID, claims.Role
+	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+		return claims.Username, nil
 	}
-
-	return "", ""
+	return "", errors.New("invalid token")
 }
