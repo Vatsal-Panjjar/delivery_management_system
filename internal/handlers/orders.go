@@ -1,81 +1,44 @@
-package handlers
+// inside RegisterOrderRoutes
+func RegisterOrderRoutes(r *chi.Mux, db *sqlx.DB, rdb *redis.Client) {
+    r.Route("/orders", func(r chi.Router) {
+        r.Use(AuthMiddleware) // JWT auth
 
-import (
-    "encoding/json"
-    "net/http"
+        r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+            claims := r.Context().Value("user").(map[string]interface{})
+            username := claims["username"].(string)
+            role := claims["role"].(string)
 
-    "github.com/go-chi/chi/v5"
-    "github.com/go-redis/redis/v8"
-    "github.com/jmoiron/sqlx"
-    "github.com/Vatsal-Panjjar/delivery_management_system/internal/auth"
-    "context"
-)
+            var orders []Order
+            if role == "admin" {
+                db.Select(&orders, "SELECT * FROM orders")
+            } else {
+                db.Select(&orders, "SELECT * FROM orders WHERE username=$1", username)
+            }
+            json.NewEncoder(w).Encode(orders)
+        })
 
-type Order struct {
-    ID     string `json:"id"`
-    Status string `json:"status"`
-    Item   string `json:"item"`
-}
+        r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+            var input struct{ Description string `json:"description"` }
+            json.NewDecoder(r.Body).Decode(&input)
+            claims := r.Context().Value("user").(map[string]interface{})
+            username := claims["username"].(string)
 
-// Register order routes
-func RegisterOrderRoutes(r chi.Router, db *sqlx.DB, rdb *redis.Client) {
-    r.Post("/orders", createOrder(db, rdb))
-    r.Get("/orders/{id}", trackOrder(db, rdb))
-    r.Patch("/orders/{id}/cancel", cancelOrder(db, rdb))
-}
+            _, err := db.Exec("INSERT INTO orders (username, description, status) VALUES ($1,$2,'pending')", username, input.Description)
+            if err != nil {
+                http.Error(w, "Failed to create order", http.StatusInternalServerError)
+                return
+            }
+            w.WriteHeader(http.StatusCreated)
+        })
 
-func createOrder(db *sqlx.DB, rdb *redis.Client) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        _, err := auth.VerifyToken(r)
-        if err != nil {
-            http.Error(w, "Unauthorized", http.StatusUnauthorized)
-            return
-        }
-
-        var o Order
-        if err := json.NewDecoder(r.Body).Decode(&o); err != nil {
-            http.Error(w, err.Error(), http.StatusBadRequest)
-            return
-        }
-        o.Status = "created"
-
-        // Save to Redis for demo
-        rdb.Set(context.Background(), o.ID, o.Status, 0)
-
-        w.WriteHeader(http.StatusCreated)
-        json.NewEncoder(w).Encode(o)
-    }
-}
-
-func trackOrder(db *sqlx.DB, rdb *redis.Client) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        _, err := auth.VerifyToken(r)
-        if err != nil {
-            http.Error(w, "Unauthorized", http.StatusUnauthorized)
-            return
-        }
-
-        id := chi.URLParam(r, "id")
-        status, err := rdb.Get(context.Background(), id).Result()
-        if err != nil {
-            http.Error(w, "Order not found", http.StatusNotFound)
-            return
-        }
-
-        json.NewEncoder(w).Encode(Order{ID: id, Status: status})
-    }
-}
-
-func cancelOrder(db *sqlx.DB, rdb *redis.Client) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        _, err := auth.VerifyToken(r)
-        if err != nil {
-            http.Error(w, "Unauthorized", http.StatusUnauthorized)
-            return
-        }
-
-        id := chi.URLParam(r, "id")
-        rdb.Set(context.Background(), id, "cancelled", 0)
-        json.NewEncoder(w).Encode(Order{ID: id, Status: "cancelled"})
-    }
+        r.Post("/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {
+            orderID := chi.URLParam(r, "id")
+            _, err := db.Exec("UPDATE orders SET status='cancelled' WHERE id=$1", orderID)
+            if err != nil {
+                http.Error(w, "Failed to cancel order", http.StatusInternalServerError)
+                return
+            }
+            w.WriteHeader(http.StatusOK)
+        })
+    })
 }
