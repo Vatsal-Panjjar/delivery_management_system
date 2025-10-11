@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -9,18 +10,20 @@ import (
 
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		tokenStr := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		if tokenStr == "" {
+			http.Error(w, "Missing token", http.StatusUnauthorized)
 			return
 		}
-		token := strings.TrimPrefix(authHeader, "Bearer ")
-		username, err := auth.ParseToken(token)
+
+		claims, err := auth.ParseToken(tokenStr)
 		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
 			return
 		}
-		r.Header.Set("X-User", username) // pass username downstream
-		next.ServeHTTP(w, r)
+
+		ctx := context.WithValue(r.Context(), "user_id", claims.UserID)
+		ctx = context.WithValue(ctx, "role", claims.Role)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
