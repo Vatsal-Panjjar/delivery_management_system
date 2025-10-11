@@ -1,89 +1,60 @@
 package main
-"github.com/jmoiron/sqlx"
-"github.com/go-redis/redis/v8"
 
+import (
+    "fmt"
+    "log"
+    "net/http"
+    "os"
 
-"github.com/Vatsal-Panjjar/delivery_management_system/internal/cache"
-"github.com/Vatsal-Panjjar/delivery_management_system/internal/db"
-"github.com/Vatsal-Panjjar/delivery_management_system/internal/handlers"
-"github.com/Vatsal-Panjjar/delivery_management_system/internal/tracker"
+    "github.com/go-chi/chi/v5"
+    "github.com/go-redis/redis/v8"
+    "github.com/jmoiron/sqlx"
+    _ "github.com/lib/pq"
+
+    "github.com/Vatsal-Panjjar/delivery_management_system/internal/handlers"
 )
 
-
 func main() {
-dbURL := os.Getenv("DATABASE_URL")
-redisAddr := os.Getenv("REDIS_ADDR")
-port := os.Getenv("PORT")
-if port == "" {
-port = "8080"
-}
+    fmt.Println("Starting Delivery Management Server...")
 
+    // Load environment variables
+    dbURL := os.Getenv("POSTGRES_URL") // e.g., "postgres://user:pass@localhost:5432/delivery_db?sslmode=disable"
+    redisAddr := os.Getenv("REDIS_ADDR") // e.g., "localhost:6379"
 
-if dbURL == "" || redisAddr == "" {
-log.Fatal("DATABASE_URL and REDIS_ADDR must be set")
-}
+    // Connect to Postgres
+    db, err := sqlx.Connect("postgres", dbURL)
+    if err != nil {
+        log.Fatalf("Failed to connect to Postgres: %v", err)
+    }
+    defer db.Close()
+    fmt.Println("Connected to Postgres")
 
+    // Connect to Redis
+    rdb := redis.NewClient(&redis.Options{
+        Addr: redisAddr,
+    })
+    _, err = rdb.Ping(rdb.Context()).Result()
+    if err != nil {
+        log.Fatalf("Failed to connect to Redis: %v", err)
+    }
+    fmt.Println("Connected to Redis")
 
-sqlxDB, err := db.NewPostgres(dbURL)
-if err != nil {
-log.Fatal(err)
-}
+    // Create router
+    r := chi.NewRouter()
 
+    // Routes
+    r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+        w.Write([]byte("Delivery Management System API is running"))
+    })
 
-// Load schema
-schema, err := os.ReadFile("./migrations/init.sql")
-if err == nil {
-db.ExecSchema(sqlxDB, string(schema))
-}
+    // Mount order routes
+    handlers.RegisterOrderRoutes(r, db, rdb)
 
-
-rclient := redis.NewClient(&redis.Options{Addr: redisAddr})
-if _, err := rclient.Ping(rclient.Context()).Result(); err != nil {
-log.Fatalf("redis ping failed: %v", err)
-}
-
-
-trackerSvc := tracker.NewTracker(sqlxDB, rclient, 4)
-cacheClient := cache.NewRedis(redisAddr)
-
-
-srv := &handlers.Server{DB: sqlxDB, Tracker: trackerSvc, Cache: cacheClient}
-
-
-r := chi.NewRouter()
-fs := http.FileServer(http.Dir("./web/static"))
-r.Handle("/static/*", http.StripPrefix("/static/", fs))
-
-
-r.Get("/", srv.IndexPage)
-r.Get("/login", srv.LoginPage)
-r.Get("/register", srv.RegisterPage)
-
-
-r.Post("/api/register", srv.Register)
-r.Post("/api/login", srv.Login)
-
-
-r.Group(func(r chi.Router) {
-r.Use(srv.AuthMiddleware)
-r.Post("/api/orders", srv.CreateOrder)
-r.Post("/api/orders/{id}/cancel", srv.CancelOrder)
-r.Get("/api/orders/{id}", srv.GetOrder)
-r.Get("/api/orders", srv.ListOrders)
-r.Get("/dashboard", srv.DashboardPage)
-r.Get("/admin", srv.AdminPage)
-})
-
-
-srvAddr := fmt.Sprintf(":%s", port)
-s := &http.Server{
-Addr: srvAddr,
-Handler: r,
-ReadTimeout: 15 * time.Second,
-WriteTimeout: 15 * time.Second,
-}
-
-
-fmt.Printf("listening on %s\n", srvAddr)
-log.Fatal(s.ListenAndServe())
+    // Start server
+    port := os.Getenv("PORT")
+    if port == "" {
+        port = "8080"
+    }
+    fmt.Printf("Server running on port %s\n", port)
+    log.Fatal(http.ListenAndServe(":"+port, r))
 }
