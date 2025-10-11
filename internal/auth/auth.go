@@ -47,4 +47,32 @@ func VerifyToken(r *http.Request) (*Claims, error) {
 
     tokenStr := parts[1]
 
-    token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(token *jwt.Token)*
+    token, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+        return jwtSecret, nil
+    })
+    if err != nil {
+        return nil, err
+    }
+
+    if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+        return claims, nil
+    }
+
+    return nil, errors.New("invalid token")
+}
+
+// RequireAdmin middleware: require admin role
+func RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        claims, err := VerifyToken(r)
+        if err != nil {
+            http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
+            return
+        }
+        if claims.Role != "admin" {
+            http.Error(w, "Forbidden: admin access required", http.StatusForbidden)
+            return
+        }
+        next.ServeHTTP(w, r)
+    }
+}
