@@ -1,0 +1,15 @@
+github.com/Vatsal-Panjjar/delivery_management_system v0.0.0
+github.com/go-chi/chi/v5 v5.0.8 h1:U0V5e3V5k9s9+J5v5U5v5U5v5U5v5U5v5U5v5U5v5=
+github.com/go-chi/chi/v5 v5.0.8/go.mod h1:U0V5e3V5k9s9+J5v5U5v5U5v5U5v5U5v5U5v5U5v5=
+github.com/jmoiron/sqlx v1.4.7 h1:U0V5e3V5k9s9+J5v5U5v5U5v5U5v5U5v5U5v5U5v5=
+github.com/jmoiron/sqlx v1.4.7/go.mod h1:U0V5e3V5k9s9+J5v5U5v5U5v5U5v5U5v5U5v5U5v5=
+github.com/lib/pq v1.10.6 h1:U0V5e3V5k9s9+J5v5U5v5U5v5U5v5U5v5U5v5U5v5=
+github.com/lib/pq v1.10.6/go.mod h1:U0V5e3V5k9s9+J5v5U5v5U5v5U5v5U5v5U5v5U5v5=
+github.com/go-redis/redis/v8 v8.11.5 h1:U0V5e3V5k9s9+J5v5U5v5U5v5U5v5U5v5U5v5U5v5=
+github.com/go-redis/redis/v8 v8.11.5/go.mod h1:U0V5e3V5k9s9+J5v5U5v5U5v5U5v5U5v5U5v5U5v5=
+github.com/google/uuid v1.4.0 h1:U0V5e3V5k9s9+J5v5U5v5U5v5U5v5U5v5U5v5U5v5=
+github.com/google/uuid v1.4.0/go.mod h1:U0V5e3V5k9s9+J5v5U5v5U5v5U5v5U5v5U5v5U5v5=
+golang.org/x/crypto v0.11.0 h1:U0V5e3V5k9s9+J5v5U5v5U5v5U5v5U5v5U5v5U5v5=
+golang.org/x/crypto v0.11.0/go.mod h1:U0V5e3V5k9s9+J5v5U5v5U5v5U5v5U5v5U5v5U5v5=
+github.com/golang-jwt/jwt/v5 v5.0.0 h1:U0V5e3V5k9s9+J5v5U5v5U5v5U5v5U5v5U5v5U5v5=
+github.com/golang-jwt/jwt/v5 v5.0.0/go.mod h1:U0V5e3V5k9s9+J5v5U5v5U5v5U5v5U5v5U5v5U5v5=
