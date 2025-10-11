@@ -4,29 +4,30 @@ import (
     "fmt"
     "log"
     "net/http"
-    "os"
 
     "github.com/go-chi/chi/v5"
     "github.com/go-redis/redis/v8"
-    "github.com/jmoiron/sqlx"
-    _ "github.com/lib/pq"
 
+    "github.com/Vatsal-Panjjar/delivery_management_system/internal/db"
     "github.com/Vatsal-Panjjar/delivery_management_system/internal/handlers"
 )
 
 func main() {
     fmt.Println("Starting Delivery Management Server...")
 
-    // Database connection (hardcode your password if you want)
+    // Hardcoded PostgreSQL connection string
     dbURL := "postgres://postgres:rupupuru@01@localhost:5432/delivery_db?sslmode=disable"
-    db, err := sqlx.Connect("postgres", dbURL)
+
+    // Connect to Postgres
+    var err error
+    db.DB, err = db.ConnectWithURL(dbURL)
     if err != nil {
         log.Fatalf("Failed to connect to Postgres: %v", err)
     }
-    defer db.Close()
+    defer db.DB.Close()
     fmt.Println("Connected to Postgres")
 
-    // Redis
+    // Hardcoded Redis address
     rdb := redis.NewClient(&redis.Options{
         Addr: "localhost:6379",
     })
@@ -36,22 +37,18 @@ func main() {
     }
     fmt.Println("Connected to Redis")
 
-    // Router
+    // Create router
     r := chi.NewRouter()
 
-    // Serve frontend
-    r.Handle("/web/*", http.StripPrefix("/web/", http.FileServer(http.Dir("./web"))))
+    // Auth routes
+    r.Post("/signup", handlers.SignupHandler)
+    r.Post("/login", handlers.LoginHandler)
 
-    // API Routes
-    handlers.RegisterAuthRoutes(r, db, rdb)
-    handlers.RegisterOrderRoutes(r, db, rdb)
-    handlers.RegisterAdminRoutes(r, db, rdb)
+    // Order routes
+    handlers.RegisterOrderRoutes(r, rdb)
 
-    port := os.Getenv("PORT")
-    if port == "" {
-        port = "8080"
-    }
-
+    // Start server
+    port := "8080"
     fmt.Printf("Server running on port %s\n", port)
     log.Fatal(http.ListenAndServe(":"+port, r))
 }
