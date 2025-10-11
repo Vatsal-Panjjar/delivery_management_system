@@ -16,12 +16,8 @@ import (
 func main() {
     fmt.Println("Starting Delivery Management Server...")
 
-    // === Hardcoded database and Redis info ===
-    dbURL := "postgres://postgres:rupupuru@01@localhost:5432/delivery_db?sslmode=disable"
-    redisAddr := "localhost:6379"
-    // ========================================
-
-    // Connect to Postgres
+    // PostgreSQL connection
+    dbURL := "postgres://postgres:MySecretPass123@localhost:5432/delivery_db?sslmode=disable"
     db, err := sqlx.Connect("postgres", dbURL)
     if err != nil {
         log.Fatalf("Failed to connect to Postgres: %v", err)
@@ -29,9 +25,9 @@ func main() {
     defer db.Close()
     fmt.Println("Connected to Postgres")
 
-    // Connect to Redis
+    // Redis connection
     rdb := redis.NewClient(&redis.Options{
-        Addr: redisAddr,
+        Addr: "localhost:6379",
     })
     _, err = rdb.Ping(rdb.Context()).Result()
     if err != nil {
@@ -39,26 +35,18 @@ func main() {
     }
     fmt.Println("Connected to Redis")
 
-    // Create router
+    // Router
     r := chi.NewRouter()
 
-    // Redirect root to login page
-    r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-        http.Redirect(w, r, "/web/index.html", http.StatusSeeOther)
-    })
-
-    // Serve static web files
+    // Serve frontend files
     r.Handle("/web/*", http.StripPrefix("/web/", http.FileServer(http.Dir("./web"))))
 
-    // API base route
-    r.Get("/api", func(w http.ResponseWriter, r *http.Request) {
-        w.Write([]byte("Delivery Management API is running"))
-    })
+    // API routes
+    apiMux := http.NewServeMux()
+    handlers.RegisterAuthRoutes(apiMux, db)      // login/register
+    handlers.RegisterOrderRoutes(r, db, rdb)    // orders
+    r.Mount("/api", apiMux)
 
-    // Mount order routes
-    handlers.RegisterOrderRoutes(r, db, rdb)
-
-    // Start server on port 8080
     port := "8080"
     fmt.Printf("Server running on port %s\n", port)
     log.Fatal(http.ListenAndServe(":"+port, r))
