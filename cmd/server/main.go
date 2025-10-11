@@ -17,7 +17,7 @@ func main() {
 	fmt.Println("Starting Delivery Management Server...")
 
 	// Hardcoded PostgreSQL URL (replace username/password/dbname if needed)
-	dbURL := "postgres://postgres:rurupuru@01@localhost:5432/delivery_db?sslmode=disable"
+	dbURL := "postgres://postgres:rupupuru@01@localhost:5432/delivery_db?sslmode=disable"
 	redisAddr := "localhost:6379"
 
 	// Connect to Postgres
