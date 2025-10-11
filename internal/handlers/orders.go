@@ -1,84 +1,81 @@
 package handlers
 
 import (
-	"encoding/json"
-	"net/http"
-	"time"
+    "encoding/json"
+    "net/http"
 
-	"github.com/google/uuid"
-	"github.com/go-chi/chi/v5"
-
-	"github.com/Vatsal-Panjjar/delivery_management_system/internal/models"
-	"github.com/Vatsal-Panjjar/delivery_management_system/internal/middleware"
+    "github.com/go-chi/chi/v5"
+    "github.com/go-redis/redis/v8"
+    "github.com/jmoiron/sqlx"
+    "github.com/Vatsal-Panjjar/delivery_management_system/internal/auth"
+    "context"
 )
 
-func (s *Server) CreateOrder(w http.ResponseWriter, r *http.Request) {
-	claims := r.Context().Value(middleware.UserCtxKey).(*auth.Claims)
-
-	var req struct {
-		Source      string `json:"source"`
-		Destination string `json:"destination"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
-		return
-	}
-
-	order := models.Order{
-		ID:          uuid.New(),
-		UserID:      uuid.MustParse(claims.UserID),
-		Source:      req.Source,
-		Destination: req.Destination,
-		Status:      "pending",
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-	}
-
-	_, err := s.DB.Exec(`INSERT INTO orders (id, user_id, source, destination, status, created_at, updated_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-		order.ID, order.UserID, order.Source, order.Destination, order.Status, order.CreatedAt, order.UpdatedAt)
-	if err != nil {
-		http.Error(w, "Failed to create order", http.StatusInternalServerError)
-		return
-	}
-
-	json.NewEncoder(w).Encode(order)
+type Order struct {
+    ID     string `json:"id"`
+    Status string `json:"status"`
+    Item   string `json:"item"`
 }
 
-func (s *Server) CancelOrder(w http.ResponseWriter, r *http.Request) {
-	claims := r.Context().Value(middleware.UserCtxKey).(*auth.Claims)
-	orderID := chi.URLParam(r, "id")
-
-	_, err := s.DB.Exec(`UPDATE orders SET status=$1, updated_at=$2
-		WHERE id=$3 AND user_id=$4 AND status != 'cancelled'`,
-		"cancelled", time.Now(), orderID, claims.UserID)
-	if err != nil {
-		http.Error(w, "Failed to cancel order", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "cancelled"})
+// Register order routes
+func RegisterOrderRoutes(r chi.Router, db *sqlx.DB, rdb *redis.Client) {
+    r.Post("/orders", createOrder(db, rdb))
+    r.Get("/orders/{id}", trackOrder(db, rdb))
+    r.Patch("/orders/{id}/cancel", cancelOrder(db, rdb))
 }
 
-func (s *Server) GetOrder(w http.ResponseWriter, r *http.Request) {
-	orderID := chi.URLParam(r, "id")
-	var order models.Order
-	err := s.DB.Get(&order, "SELECT * FROM orders WHERE id=$1", orderID)
-	if err != nil {
-		http.Error(w, "Order not found", http.StatusNotFound)
-		return
-	}
-	json.NewEncoder(w).Encode(order)
+func createOrder(db *sqlx.DB, rdb *redis.Client) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        _, err := auth.VerifyToken(r)
+        if err != nil {
+            http.Error(w, "Unauthorized", http.StatusUnauthorized)
+            return
+        }
+
+        var o Order
+        if err := json.NewDecoder(r.Body).Decode(&o); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        }
+        o.Status = "created"
+
+        // Save to Redis for demo
+        rdb.Set(context.Background(), o.ID, o.Status, 0)
+
+        w.WriteHeader(http.StatusCreated)
+        json.NewEncoder(w).Encode(o)
+    }
 }
 
-func (s *Server) ListOrders(w http.ResponseWriter, r *http.Request) {
-	claims := r.Context().Value(middleware.UserCtxKey).(*auth.Claims)
-	var orders []models.Order
-	err := s.DB.Select(&orders, "SELECT * FROM orders WHERE user_id=$1 ORDER BY created_at DESC", claims.UserID)
-	if err != nil {
-		http.Error(w, "Failed to fetch orders", http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(orders)
+func trackOrder(db *sqlx.DB, rdb *redis.Client) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        _, err := auth.VerifyToken(r)
+        if err != nil {
+            http.Error(w, "Unauthorized", http.StatusUnauthorized)
+            return
+        }
+
+        id := chi.URLParam(r, "id")
+        status, err := rdb.Get(context.Background(), id).Result()
+        if err != nil {
+            http.Error(w, "Order not found", http.StatusNotFound)
+            return
+        }
+
+        json.NewEncoder(w).Encode(Order{ID: id, Status: status})
+    }
+}
+
+func cancelOrder(db *sqlx.DB, rdb *redis.Client) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        _, err := auth.VerifyToken(r)
+        if err != nil {
+            http.Error(w, "Unauthorized", http.StatusUnauthorized)
+            return
+        }
+
+        id := chi.URLParam(r, "id")
+        rdb.Set(context.Background(), id, "cancelled", 0)
+        json.NewEncoder(w).Encode(Order{ID: id, Status: "cancelled"})
+    }
 }
