@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Management - Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Admin Dashboard</h2>
+
+        <div class="section">
+            <h3>Create Order</h3>
+            <input type="text" id="orderCustomer" placeholder="Customer Name">
+            <button id="createOrderBtn">Create Order</button>
+        </div>
+
+        <div class="section">
+            <h3>Cancel Order</h3>
+            <input type="text" id="orderIdCancel" placeholder="Order ID">
+            <button id="cancelOrderBtn">Cancel Order</button>
+        </div>
+
+        <div class="section">
+            <h3>Track Order</h3>
+            <input type="text" id="orderIdTrack" placeholder="Order ID">
+            <button id="trackOrderBtn">Track Order</button>
+            <p id="orderStatus"></p>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
