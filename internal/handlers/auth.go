@@ -1,107 +1,68 @@
 package handlers
 
 import (
-	"encoding/json"
-	"net/http"
-	"time"
+    "encoding/json"
+    "net/http"
 
-	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
-	"golang.org/x/crypto/bcrypt"
-
-	"github.com/Vatsal-Panjjar/delivery_management_system/internal/auth"
-	"github.com/Vatsal-Panjjar/delivery_management_system/internal/models"
+    "github.com/jmoiron/sqlx"
+    "github.com/Vatsal-Panjjar/delivery_management_system/internal/auth"
 )
 
-type Server struct {
-	DB      *sqlx.DB
-	Tracker interface{}
-	Cache   interface{}
+type AuthRequest struct {
+    Username string `json:"username"`
+    Password string `json:"password"`
 }
 
-// Register creates a new user (customer role).
-func (s *Server) Register(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
-		return
-	}
-
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		http.Error(w, "Server error", http.StatusInternalServerError)
-		return
-	}
-
-	user := models.User{
-		ID:           uuid.New(),
-		Username:     req.Username,
-		PasswordHash: string(hash),
-		Role:         "customer",
-	}
-
-	_, err = s.DB.Exec(`INSERT INTO users (id, username, password_hash, role) VALUES ($1,$2,$3,$4)`,
-		user.ID, user.Username, user.PasswordHash, user.Role)
-	if err != nil {
-		http.Error(w, "Username already exists", http.StatusBadRequest)
-		return
-	}
-
-	token, err := auth.GenerateToken(user.ID.String(), user.Role, 24*time.Hour)
-	if err != nil {
-		http.Error(w, "Token generation failed", http.StatusInternalServerError)
-		return
-	}
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "token",
-		Value:    token,
-		HttpOnly: true,
-		Path:     "/",
-	})
-
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"token": token})
+type AuthResponse struct {
+    Token string `json:"token"`
+    Role  string `json:"role"`
 }
 
-// Login authenticates a user and returns a JWT token.
-func (s *Server) Login(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
-		return
-	}
+// Dummy users for demo
+var users = map[string]struct {
+    Password string
+    Role     string
+}{
+    "admin": {Password: "admin123", Role: "admin"},
+    "user":  {Password: "user123", Role: "user"},
+}
 
-	var user models.User
-	err := s.DB.Get(&user, "SELECT * FROM users WHERE username=$1", req.Username)
-	if err != nil {
-		http.Error(w, "User not found", http.StatusUnauthorized)
-		return
-	}
+// RegisterAuthRoutes registers login endpoints
+func RegisterAuthRoutes(r *http.ServeMux, db *sqlx.DB) {
+    r.HandleFunc("/login", loginHandler)
+}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
-		http.Error(w, "Incorrect password", http.StatusUnauthorized)
-		return
-	}
+// loginHandler handles user login
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
 
-	token, err := auth.GenerateToken(user.ID.String(), user.Role, 24*time.Hour)
-	if err != nil {
-		http.Error(w, "Token generation failed", http.StatusInternalServerError)
-		return
-	}
+    var req AuthRequest
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "token",
-		Value:    token,
-		HttpOnly: true,
-		Path:     "/",
-	})
+    user, ok := users[req.Username]
+    if !ok || user.Password != req.Password {
+        http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+        return
+    }
 
-	json.NewEncoder(w).Encode(map[string]string{"token": token})
+    // Generate token (2 arguments: username, role)
+    token, err := auth.GenerateToken(req.Username, user.Role)
+    if err != nil {
+        http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+        return
+    }
+
+    resp := AuthResponse{
+        Token: token,
+        Role:  user.Role,
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(resp)
 }
