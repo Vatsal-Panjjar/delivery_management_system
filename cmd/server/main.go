@@ -1,74 +1,58 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
-	"time"
-
-	"github.com/go-chi/chi/v5"
-	"github.com/go-redis/redis/v8"
-	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
-
-	"github.com/Vatsal-Panjjar/delivery_management_system/internal/handlers"
-	"github.com/Vatsal-Panjjar/delivery_management_system/internal/workers"
+	"os"
+	"delivery_management_system/internal/web"
+	"delivery_management_system/internal/middleware"
+	"delivery_management_system/internal/db"
+	"delivery_management_system/internal/auth"
+	"delivery_management_system/internal/handlers"
+	"github.com/joho/godotenv"
+	"github.com/manifoldco/promptui"
 )
 
 func main() {
-	fmt.Println("🚀 Starting Delivery Management System Server...")
-
-	// DB connection (hardcoded)
-	pgURL := "postgres://postgres:rupupuru@01@localhost:5432/delivery_db?sslmode=disable"
-	db, err := sqlx.Connect("postgres", pgURL)
+	// Load environment variables from .env file
+	err := godotenv.Load()
 	if err != nil {
-		log.Fatalf("❌ Failed to connect Postgres: %v", err)
+		log.Fatal("Error loading .env file")
 	}
-	defer db.Close()
-	fmt.Println("✅ Connected to Postgres")
 
-	// Redis
-	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		log.Fatalf("❌ Failed to connect Redis: %v", err)
+	// Prompt the user for the PostgreSQL password
+	passwordPrompt := promptui.Prompt{
+		Label: "rupupuru@01",
+		Mask:  '*', // Mask the input as the user types the password
 	}
-	fmt.Println("✅ Connected to Redis")
 
-	// Initialize router
-	r := chi.NewRouter()
+	password, err := passwordPrompt.Run()
+	if err != nil {
+		log.Fatalf("Prompt failed %v\n", err)
+	}
 
-	// Handler setup
-	h := handlers.NewHandler(db, rdb)
+	// Set the database connection string with the password
+	// Make sure to replace username and dbname with your actual values
+	dbConnStr := fmt.Sprintf("user=%s password=%s dbname=delivery_management_system sslmode=disable",
+		os.Getenv("DB_USER"), password)
 
-	// Auth routes
-	r.Get("/register", h.ShowRegister)
-	r.Post("/register", h.HandleRegister)
-	r.Get("/login", h.ShowLogin)
-	r.Post("/login", h.HandleLogin)
-	r.Post("/logout", h.HandleLogout)
+	// Initialize the database with the connection string
+	db.Initialize(dbConnStr)
 
-	// Protected user routes
-	r.Group(func(r chi.Router) {
-		r.Use(h.AuthMiddleware)
-		r.Get("/dashboard", h.Dashboard)
-		r.Post("/orders", h.CreateOrder)
-		r.Post("/orders/{id}/cancel", h.CancelOrder)
-	})
+	// Set up authentication
+	auth.InitAuth()
 
-	// Admin routes
-	r.Group(func(r chi.Router) {
-		r.Use(h.AdminMiddleware)
-		r.Get("/admin", h.AdminDashboard)
-		r.Post("/admin/orders/{id}/status", h.AdminUpdateStatus)
-	})
+	// Set up routes
+	http.HandleFunc("/user", handlers.UserHandler)
+	http.HandleFunc("/admin", handlers.AdminHandler)
+	http.HandleFunc("/order", handlers.OrderHandler)
+	http.HandleFunc("/tracking", handlers.TrackingHandler)
 
-	// Worker for async order updates
-	tracker := workers.NewOrderTracker(db, rdb)
-	go tracker.Run()
+	// Apply middleware for authentication
+	http.Handle("/admin", middleware.AuthMiddleware(http.HandlerFunc(handlers.AdminHandler)))
 
-	fmt.Println("🌐 Server running on http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", r))
+	// Start the server
+	fmt.Println("Server started on port 8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
