@@ -2,37 +2,52 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"log"
-	"fmt"
-
-	_ "github.com/lib/pq"
+	"delivery_management_system/internal/models"
+	"github.com/lib/pq"
 )
 
-var db *sql.DB
-
-// Initialize DB connection
+// Initialize connects to the PostgreSQL database
 func Initialize(connStr string) {
 	var err error
-	db, err = sql.Open("postgres", connStr)
+	DB, err = sql.Open("postgres", connStr)
 	if err != nil {
-		log.Fatal("Unable to connect to database:", err)
-	}
-}
-
-// Close DB connection
-func Close() {
-	if db != nil {
-		db.Close()
+		log.Fatal("Failed to connect to database:", err)
 	}
 }
 
 // CreateOrder creates a new order in the database
-func CreateOrder(userID int, status string) (int, error) {
-	var orderID int
-	query := `INSERT INTO orders (user_id, order_status) VALUES ($1, $2) RETURNING id`
-	err := db.QueryRow(query, userID, status).Scan(&orderID)
+func CreateOrder(order *models.Order) (string, error) {
+	var orderID string
+	err := DB.QueryRow("INSERT INTO orders (user_id, status) VALUES ($1, $2) RETURNING id", order.UserID, order.Status).Scan(&orderID)
 	if err != nil {
-		return 0, fmt.Errorf("could not create order: %v", err)
+		log.Println("Error inserting order:", err)
+		return "", err
 	}
 	return orderID, nil
+}
+
+// UpdateOrderStatus updates the status of an existing order
+func UpdateOrderStatus(orderID, status string) error {
+	_, err := DB.Exec("UPDATE orders SET status = $1 WHERE id = $2", status, orderID)
+	if err != nil {
+		log.Println("Error updating order status:", err)
+		return err
+	}
+	return nil
+}
+
+// GetOrderStatus retrieves the status of an order by its ID
+func GetOrderStatus(orderID string) (string, error) {
+	var status string
+	err := DB.QueryRow("SELECT status FROM orders WHERE id = $1", orderID).Scan(&status)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", errors.New("order not found")
+		}
+		log.Println("Error fetching order status:", err)
+		return "", err
+	}
+	return status, nil
 }
