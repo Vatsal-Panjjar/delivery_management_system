@@ -5,7 +5,7 @@ import (
 	"errors"
 	"log"
 	"delivery_management_system/internal/models"
-	_ "github.com/lib/pq" // Empty import to initialize the PostgreSQL driver
+	_ "github.com/lib/pq" // Empty import to initialize PostgreSQL driver
 )
 
 // DB will hold the database connection
