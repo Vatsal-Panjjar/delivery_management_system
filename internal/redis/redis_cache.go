@@ -1,39 +1,42 @@
 package redis
 
 import (
-	"context"
 	"github.com/go-redis/redis/v8"
 	"log"
+	"context"
+	"time"
 )
 
-var rdb *redis.Client
+var Rdb *redis.Client
 var ctx = context.Background()
 
-// Initialize Redis connection
+// Initialize connects to the Redis database
 func Initialize() {
-	rdb = redis.NewClient(&redis.Options{
-		Addr: "localhost:6379", // Redis server address
-		DB:   0,                // Default DB
+	Rdb = redis.NewClient(&redis.Options{
+		Addr: "localhost:6379", // Assuming Redis is running on localhost
 	})
-
-	_, err := rdb.Ping(ctx).Result()
+	_, err := Rdb.Ping(ctx).Result()
 	if err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+		log.Fatal("Failed to connect to Redis:", err)
 	}
 }
 
-// SetOrderTracking stores order status in Redis cache
-func SetOrderTracking(orderID string, status string) {
-	rdb.Set(ctx, orderID, status, 0)
+// SetOrderStatus caches the status of an order in Redis
+func SetOrderStatus(orderID, status string) {
+	err := Rdb.Set(ctx, orderID, status, 10*time.Minute).Err()
+	if err != nil {
+		log.Println("Error setting order status in Redis:", err)
+	}
 }
 
-// GetOrderTracking retrieves order status from Redis cache
-func GetOrderTracking(orderID string) string {
-	status, err := rdb.Get(ctx, orderID).Result()
+// GetOrderStatus retrieves the status of an order from Redis
+func GetOrderStatus(orderID string) (string, error) {
+	status, err := Rdb.Get(ctx, orderID).Result()
 	if err == redis.Nil {
-		return "No status found"
+		return "", nil // Status not found in Redis
 	} else if err != nil {
-		log.Fatalf("Error getting order status: %v", err)
+		log.Println("Error getting order status from Redis:", err)
+		return "", err
 	}
-	return status
+	return status, nil
 }
