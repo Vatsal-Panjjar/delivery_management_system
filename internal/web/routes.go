@@ -1,12 +1,13 @@
-
 package web
 
 import (
-    "github.com/gorilla/mux"
-    "net/http"
+	"github.com/gorilla/mux"
+	"delivery_management_system/internal/handlers" // Import your handlers package
 )
 
 func RegisterRoutes(r *mux.Router) {
-    // Define your routes here
-    r.HandleFunc("/api/your-endpoint", YourHandler).Methods("GET")
+	// Register your routes here
+	r.HandleFunc("/api/orders", handlers.GetOrders).Methods("GET")
+	r.HandleFunc("/api/order/{id}", handlers.GetOrder).Methods("GET")
+	// Add more routes as necessary
 }
