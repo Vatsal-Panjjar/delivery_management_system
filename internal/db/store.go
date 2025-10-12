@@ -8,6 +8,9 @@ import (
 	"github.com/lib/pq"
 )
 
+// DB will hold the database connection
+var DB *sql.DB
+
 // Initialize connects to the PostgreSQL database
 func Initialize(connStr string) {
 	var err error
