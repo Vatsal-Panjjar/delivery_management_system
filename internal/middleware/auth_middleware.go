@@ -5,30 +5,37 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Vatsal-Panjjar/delivery_management_system/internal/auth"
+	"github.com/golang-jwt/jwt/v5"
 )
 
-type ctxKey string
+var JwtKey = []byte("secret-key")
+
+type ContextKey string
 
 const (
-	CtxUser = ctxKey("user")
-	CtxRole = ctxKey("role")
+	CtxUserRole ContextKey = "userRole"
 )
 
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		header := r.Header.Get("Authorization")
-		if header == "" || !strings.HasPrefix(header, "Bearer ") {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, "missing token", http.StatusUnauthorized)
 			return
 		}
 
-		token := strings.TrimPrefix(header, "Bearer ")
-		username, role := auth.ParseToken(token) // Returns 2 values
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		claims := jwt.MapClaims{}
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			return JwtKey, nil
+		})
+		if err != nil || !token.Valid {
+			http.Error(w, "invalid token", http.StatusUnauthorized)
+			return
+		}
 
-		ctx := context.WithValue(r.Context(), CtxUser, username)
-		ctx = context.WithValue(ctx, CtxRole, role)
-
+		role := claims["role"].(string)
+		ctx := context.WithValue(r.Context(), CtxUserRole, role)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
