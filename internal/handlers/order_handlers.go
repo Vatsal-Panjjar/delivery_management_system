@@ -1,36 +1,34 @@
 package handlers
 
 import (
-    "net/http"
+	"encoding/json"
+	"net/http"
 
-    "github.com/go-chi/chi/v5"
-    "github.com/go-redis/redis/v8"
-    "github.com/jmoiron/sqlx"
-    "github.com/Vatsal-Panjjar/delivery_management_system/internal/middleware"
+	"github.com/Vatsal-Panjjar/delivery_management_system/internal/db"
 )
 
-func RegisterOrderRoutes(r *chi.Mux, db *sqlx.DB, rdb *redis.Client) {
-    r.Route("/orders", func(r chi.Router) {
-        r.Post("/", middleware.AuthMiddleware(CreateOrderHandler(db, rdb)))
-        r.Get("/{id}", middleware.AuthMiddleware(GetOrderHandler(db, rdb)))
-        r.Put("/{id}/cancel", middleware.AuthMiddleware(CancelOrderHandler(db, rdb)))
-    })
+type OrderHandler struct {
+	store *db.Store
 }
 
-func CreateOrderHandler(db *sqlx.DB, rdb *redis.Client) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        w.Write([]byte("Create Order"))
-    }
+func NewOrderHandler(store *db.Store) *OrderHandler {
+	return &OrderHandler{store: store}
 }
 
-func GetOrderHandler(db *sqlx.DB, rdb *redis.Client) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        w.Write([]byte("Get Order"))
-    }
-}
+func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		UserID          int    `json:"user_id"`
+		PickupAddress   string `json:"pickup"`
+		DeliveryAddress string `json:"delivery"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
 
-func CancelOrderHandler(db *sqlx.DB, rdb *redis.Client) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        w.Write([]byte("Cancel Order"))
-    }
+	_, err := h.store.DB.Exec(`INSERT INTO orders (user_id, pickup_address, delivery_address) VALUES ($1, $2, $3)`,
+		req.UserID, req.PickupAddress, req.DeliveryAddress)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	w.Write([]byte("✅ Order created"))
 }
