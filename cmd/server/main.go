@@ -1,59 +1,74 @@
 package main
 
 import (
-    "fmt"
-    "log"
-    "net/http"
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"time"
 
-    "github.com/go-chi/chi/v5"
-    "github.com/go-redis/redis/v8"
-    "github.com/jmoiron/sqlx"
-    _ "github.com/lib/pq"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-redis/redis/v8"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 
-    "github.com/Vatsal-Panjjar/delivery_management_system/internal/handlers"
+	"github.com/Vatsal-Panjjar/delivery_management_system/internal/handlers"
+	"github.com/Vatsal-Panjjar/delivery_management_system/internal/workers"
 )
 
 func main() {
-    fmt.Println("Starting Delivery Management Server...")
+	fmt.Println("🚀 Starting Delivery Management System Server...")
 
-    // --- PostgreSQL connection ---
-    dbURL := "postgres://postgres:rupupuru@01@localhost:5432/delivery_db?sslmode=disable"
-    db, err := sqlx.Connect("postgres", dbURL)
-    if err != nil {
-        log.Fatalf("Failed to connect to Postgres: %v", err)
-    }
-    defer db.Close()
-    fmt.Println("Connected to Postgres")
+	// DB connection (hardcoded)
+	pgURL := "postgres://postgres:rupupuru@01@localhost:5432/delivery_db?sslmode=disable"
+	db, err := sqlx.Connect("postgres", pgURL)
+	if err != nil {
+		log.Fatalf("❌ Failed to connect Postgres: %v", err)
+	}
+	defer db.Close()
+	fmt.Println("✅ Connected to Postgres")
 
-    // --- Redis connection ---
-    rdb := redis.NewClient(&redis.Options{
-        Addr: "localhost:6379",
-    })
-    _, err = rdb.Ping(rdb.Context()).Result()
-    if err != nil {
-        log.Fatalf("Failed to connect to Redis: %v", err)
-    }
-    fmt.Println("Connected to Redis")
+	// Redis
+	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := rdb.Ping(ctx).Err(); err != nil {
+		log.Fatalf("❌ Failed to connect Redis: %v", err)
+	}
+	fmt.Println("✅ Connected to Redis")
 
-    // --- Router ---
-    r := chi.NewRouter()
+	// Initialize router
+	r := chi.NewRouter()
 
-    // --- Routes ---
-    r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-        w.Write([]byte("Delivery Management System API is running"))
-    })
+	// Handler setup
+	h := handlers.NewHandler(db, rdb)
 
-    // Register auth routes
-    handlers.RegisterAuthRoutes(r, db, rdb)
+	// Auth routes
+	r.Get("/register", h.ShowRegister)
+	r.Post("/register", h.HandleRegister)
+	r.Get("/login", h.ShowLogin)
+	r.Post("/login", h.HandleLogin)
+	r.Post("/logout", h.HandleLogout)
 
-    // Register order routes
-    handlers.RegisterOrderRoutes(r, db, rdb)
+	// Protected user routes
+	r.Group(func(r chi.Router) {
+		r.Use(h.AuthMiddleware)
+		r.Get("/dashboard", h.Dashboard)
+		r.Post("/orders", h.CreateOrder)
+		r.Post("/orders/{id}/cancel", h.CancelOrder)
+	})
 
-    // Register admin routes
-    handlers.RegisterAdminRoutes(r, db)
+	// Admin routes
+	r.Group(func(r chi.Router) {
+		r.Use(h.AdminMiddleware)
+		r.Get("/admin", h.AdminDashboard)
+		r.Post("/admin/orders/{id}/status", h.AdminUpdateStatus)
+	})
 
-    // --- Start server ---
-    port := "8080"
-    fmt.Printf("Server running on port %s\n", port)
-    log.Fatal(http.ListenAndServe(":"+port, r))
+	// Worker for async order updates
+	tracker := workers.NewOrderTracker(db, rdb)
+	go tracker.Run()
+
+	fmt.Println("🌐 Server running on http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", r))
 }
