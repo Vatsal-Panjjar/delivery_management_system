@@ -1,27 +1,42 @@
 package handlers
 
 import (
-    "net/http"
+	"encoding/json"
+	"net/http"
 
-    "github.com/go-chi/chi/v5"
-    "github.com/jmoiron/sqlx"
+	"github.com/Vatsal-Panjjar/delivery_management_system/internal/db"
 )
 
-func RegisterAdminRoutes(r *chi.Mux, db *sqlx.DB) {
-    r.Route("/admin", func(r chi.Router) {
-        r.Get("/dashboard", AdminDashboardHandler(db))
-        r.Put("/orders/{id}/status", UpdateOrderStatusHandler(db))
-    })
+type AdminHandler struct {
+	store *db.Store
 }
 
-func AdminDashboardHandler(db *sqlx.DB) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        w.Write([]byte("Admin Dashboard"))
-    }
+func NewAdminHandler(store *db.Store) *AdminHandler {
+	return &AdminHandler{store: store}
 }
 
-func UpdateOrderStatusHandler(db *sqlx.DB) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        w.Write([]byte("Update Order Status"))
-    }
+func (h *AdminHandler) GetAllOrders(w http.ResponseWriter, r *http.Request) {
+	rows, _ := h.store.DB.Query(`SELECT id, user_id, pickup_address, delivery_address, status FROM orders`)
+	defer rows.Close()
+
+	var orders []map[string]interface{}
+	for rows.Next() {
+		var o struct {
+			ID              int
+			UserID          int
+			PickupAddress   string
+			DeliveryAddress string
+			Status          string
+		}
+		rows.Scan(&o.ID, &o.UserID, &o.PickupAddress, &o.DeliveryAddress, &o.Status)
+		orders = append(orders, map[string]interface{}{
+			"id":       o.ID,
+			"user_id":  o.UserID,
+			"pickup":   o.PickupAddress,
+			"delivery": o.DeliveryAddress,
+			"status":   o.Status,
+		})
+	}
+
+	json.NewEncoder(w).Encode(orders)
 }
